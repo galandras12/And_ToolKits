@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       And ToolKit
  * Plugin URI:        https://github.com/galandras12/and-toolkit
- * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó, látogatói/letöltési statisztika és kötelező GDPR Cookie (Süti) kezelő modul sötét/világos móddal.
- * Version:           0.2.0
+ * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó, látogatói/letöltési statisztika, kötelező GDPR Cookie kezelő és testreszabható Információs Banner modul sötét/világos móddal.
+ * Version:           0.3.0
  * Requires at least: 6.2
  * Tested up to:      7.1
  * Requires PHP:      8.0
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class And_ToolKit_Plugin {
-    public const VERSION    = '0.2.0';
+    public const VERSION    = '0.3.0';
     public const AUTHOR     = 'galandras12+AI';
     public const WP_TARGET  = '7.1';
     public const PHP_TARGET = '8.0';
@@ -28,6 +28,7 @@ final class And_ToolKit_Plugin {
         add_action( 'admin_menu', [ __CLASS__, 'register_admin_menu' ] );
         add_action( 'widgets_init', [ __CLASS__, 'register_sidebar_widgets' ] );
         add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_frontend_assets' ] );
+        add_action( 'wp_body_open', [ __CLASS__, 'render_global_info_banner' ] );
         add_action( 'wp_footer', [ __CLASS__, 'render_gdpr_footer_banner' ] );
         add_action( 'rest_api_init', [ __CLASS__, 'register_rest_routes' ] );
 
@@ -37,6 +38,7 @@ final class And_ToolKit_Plugin {
         add_shortcode( 'wtk_social', [ __CLASS__, 'render_social_widget' ] );
         add_shortcode( 'wtk_stats', [ __CLASS__, 'render_stats_widget' ] );
         add_shortcode( 'wtk_cookie_consent', [ __CLASS__, 'render_cookie_consent_widget' ] );
+        add_shortcode( 'wtk_info_banner', [ __CLASS__, 'render_info_banner_shortcode' ] );
     }
 
     public static function register_admin_menu(): void {
@@ -101,7 +103,29 @@ final class And_ToolKit_Plugin {
                 'expiry_days'            => 180,
                 'google_consent_mode_v2' => true,
                 'auto_block_scripts'     => true,
-                'default_categories'     => [ 'necessary' => true, 'preferences' => true, 'analytics' => false, 'marketing' => false ],
+                'default_categories'     => [
+                    'necessary'   => true,
+                    'preferences' => true,
+                    'analytics'   => false,
+                    'marketing'   => false,
+                ],
+            ],
+            'banner'      => [
+                'enabled'          => true,
+                'visibility_scope' => 'all-pages',
+                'sticky_top'       => true,
+                'color_preset'     => 'cobalt-gradient',
+                'custom_bg_hex'    => '#1E3A8A',
+                'custom_text_hex'  => '#FFFFFF',
+                'size_preset'      => 'standard',
+                'font_style'       => 'display-bold',
+                'animation'        => 'pulse-glow',
+                'badge_text'       => 'ÚJ VERZIÓ · v0.3.0',
+                'headline'         => 'And ToolKit v0.3.0 megjelent: Testreszabható Információs Banner és GDPR Cookie Kezelő!',
+                'subtext'          => 'Állítsa be egyedi színekkel, betűtípussal és animációval a főoldalon vagy minden oldalon.',
+                'cta_label'        => 'Részletek megtekintése',
+                'cta_url'          => '/kiadasok/and-toolkit-v0-3-0',
+                'dismissible'      => true,
             ],
             'performance' => [
                 'minify_assets'   => true,
@@ -114,6 +138,7 @@ final class And_ToolKit_Plugin {
 
     public static function enqueue_frontend_assets(): void {
         $config = self::get_config();
+        // WordPress 6.3+ / 7.1 natív script strategy ('defer') támogatás jQuery függőség nélkül
         wp_register_script(
             'and-toolkit-frontend',
             plugins_url( 'assets/and-toolkit.min.js', __FILE__ ),
@@ -223,6 +248,36 @@ final class And_ToolKit_Plugin {
             esc_html( $config['title'] ),
             esc_url( $config['privacy_url'] )
         );
+    }
+
+    public static function render_info_banner_shortcode( array|string $atts = [] ): string {
+        $config = self::get_config()['banner'];
+        if ( ! $config['enabled'] ) {
+            return '';
+        }
+        return sprintf(
+            '<aside class="atk-info-banner" data-scope="%s" data-color="%s" data-size="%s" data-font="%s" data-anim="%s"><strong>%s</strong> <span>%s</span> <a href="%s">%s</a></aside>',
+            esc_attr( $config['visibility_scope'] ),
+            esc_attr( $config['color_preset'] ),
+            esc_attr( $config['size_preset'] ),
+            esc_attr( $config['font_style'] ),
+            esc_attr( $config['animation'] ),
+            esc_html( $config['badge_text'] ),
+            esc_html( $config['headline'] ),
+            esc_url( $config['cta_url'] ),
+            esc_html( $config['cta_label'] )
+        );
+    }
+
+    public static function render_global_info_banner(): void {
+        $config = self::get_config()['banner'];
+        if ( ! $config['enabled'] || 'sidebar-only' === $config['visibility_scope'] ) {
+            return;
+        }
+        if ( 'homepage-only' === $config['visibility_scope'] && function_exists( 'is_front_page' ) && ! is_front_page() ) {
+            return;
+        }
+        echo self::render_info_banner_shortcode(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     public static function render_gdpr_footer_banner(): void {

@@ -7,6 +7,7 @@ import {
   Copy,
   Download,
   Gauge,
+  Megaphone,
   Search,
   Share2,
   ShieldCheck,
@@ -30,7 +31,7 @@ interface OverviewAndExportPanelProps {
   state: ToolkitState;
   onNavigateTab: (tab: ActiveTab) => void;
   onToggleModule: (
-    module: 'calendar' | 'search' | 'social' | 'stats' | 'gdpr',
+    module: 'calendar' | 'search' | 'social' | 'stats' | 'gdpr' | 'banner',
     enabled: boolean
   ) => void;
   onUpdatePerformance: (patch: Partial<PerformanceConfig>) => void;
@@ -51,6 +52,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
     state.social.enabled,
     state.stats.enabled,
     state.gdpr.enabled,
+    state.banner.enabled,
   ].filter(Boolean).length;
 
   const perfMetrics = calculatePerformanceMetrics(state.performance, activeCount);
@@ -85,10 +87,10 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             <AndWrenchLogo size="lg" />
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                And ToolKit v0.2.0 — WordPress 7.1 &amp; PHP 8.0+ Forráskód (and-toolkit.php)
+                And ToolKit v0.3.0 — WordPress 7.1 &amp; PHP 8.0+ Forráskód (and-toolkit.php)
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong> · Verzió: <span className="font-mono">0.2.0</span> · Célkörnyezet: <span className="font-mono">WordPress 7.1 / PHP 8.0+ / EU GDPR</span>
+                Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong> · Verzió: <span className="font-mono">0.3.0</span> · Célkörnyezet: <span className="font-mono">WordPress 7.1 / PHP 8.0+ / EU GDPR &amp; Info Banner</span>
               </p>
             </div>
           </div>
@@ -128,7 +130,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                WordPress 7.1, PHP 8.0 és EU GDPR Kompatibilitási Audit Jelentés (v0.2.0)
+                WordPress 7.1, PHP 8.0, EU GDPR &amp; Info Banner Kompatibilitási Audit Jelentés (v0.3.0)
               </h3>
             </div>
             <span className="text-xs font-mono font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
@@ -165,7 +167,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
         <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
           <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Regisztrált WordPress 7.1 Rövidkódok (5 Shortcode) és REST Végpontok
+              Regisztrált WordPress 7.1 Rövidkódok (6 Shortcode) és REST Végpontok
             </h3>
           </div>
           <div className="overflow-x-auto">
@@ -249,6 +251,20 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                     REST: /wp-json/and-toolkit/v1/cookie-consent
                   </td>
                 </tr>
+                <tr>
+                  <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-slate-100">
+                    06. Állandó Információs Banner (v0.3.0)
+                  </td>
+                  <td className="py-2.5 px-3 font-mono text-blue-600 dark:text-blue-400">
+                    [wtk_info_banner scope=&quot;{state.banner.visibilityScope}&quot; anim=&quot;{state.banner.animation}&quot;]
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
+                    {state.banner.colorPreset} · {state.banner.sizePreset} · {state.banner.fontStyle}
+                  </td>
+                  <td className="py-2.5 px-4 font-mono text-slate-500">
+                    Action: wp_body_open / is_front_page()
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -264,14 +280,14 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                GitHub Közzététel Előkészítve (v0.2.0 Release)
+                GitHub Közzététel Előkészítve (v0.3.0 Release)
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                A gyökérkönyvtárban az önálló <code className="font-mono">/and-toolkit.php</code> és a <code className="font-mono">/README.md</code> frissítve a <code className="font-mono">0.2.0</code> GDPR Cookie modullal.
+                A gyökérkönyvtárban az önálló <code className="font-mono">/and-toolkit.php</code> és a látványos <code className="font-mono">/README.md</code> frissítve a <code className="font-mono">0.3.0</code> Információs Banner modullal és a Google AI Studio (Gemini 4 Argon) megjelöléssel.
               </p>
             </div>
             <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-              Git: main · tag: v0.2.0
+              Git: main · tag: v0.3.0
             </span>
           </div>
           <div className="p-3 rounded-md bg-slate-950 text-slate-200 text-xs font-mono overflow-x-auto space-y-1">
@@ -287,7 +303,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
   // OVERVIEW MODE
   return (
     <div className="space-y-6">
-      {/* Overview Header with Custom Wrench-& Logo, Version 0.2.0 & Author galandras12+AI */}
+      {/* Overview Header with Custom Wrench-& Logo, Version 0.3.0 & Author galandras12+AI */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-start sm:items-center gap-3.5">
           <AndWrenchLogo size="lg" />
@@ -297,14 +313,14 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             </h2>
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-                Verzió: 0.2.0
+                Verzió: 0.3.0
               </span>
               <span aria-hidden="true">·</span>
               <span>
                 Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong>
               </span>
               <span aria-hidden="true">·</span>
-              <span>WordPress 7.1 Admin &amp; GDPR Eszköztár</span>
+              <span>WordPress 7.1 Admin, GDPR &amp; Info Banner Eszköztár</span>
             </div>
           </div>
         </div>
@@ -491,8 +507,8 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           </div>
         </div>
 
-        {/* Module 5: GDPR Cookie Consent (New in v0.2.0) */}
-        <div className="md:col-span-2 p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
+        {/* Module 5: GDPR Cookie Consent */}
+        <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -501,10 +517,10 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    05. GDPR Kötelező Süti (Cookie) és Adatvédelmi Hozzájárulás Kezelő (ÚJ · v0.2.0)
+                    05. GDPR Kötelező Süti (Cookie) Kezelő
                   </h3>
                   <div className="text-xs text-slate-500">
-                    Elrendezés: {state.gdpr.displayStyle} · Google Consent Mode v2 · {state.gdpr.consentExpiryDays} napos lejárat
+                    Elrendezés: {state.gdpr.displayStyle} · GCM v2 · {state.gdpr.consentExpiryDays} nap
                   </div>
                 </div>
               </div>
@@ -517,7 +533,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
               />
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Az EU GDPR irányelvek által kötelezően előírt előzetes süti-hozzájárulási felület 4 granuláris kategóriával (Szükséges, Funkcionális, Statisztikai, Marketing), szkript-blokkolással és bármikor módosítható adatvédelmi preferenciákkal.
+              Az EU GDPR által előírt süti-hozzájárulási felület 4 granuláris kategóriával, szkript-blokkolással és módosítható preferenciákkal.
             </p>
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -528,7 +544,49 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
               className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
             >
               <Sliders className="w-3.5 h-3.5" />
-              <span>GDPR Cookie felület testreszabása</span>
+              <span>GDPR Cookie testreszabása</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Module 6: Persistent Customizable Info Banner (New in v0.3.0) */}
+        <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-md bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <Megaphone className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    06. Állandó Információs Banner (ÚJ · v0.3.0)
+                  </h3>
+                  <div className="text-xs text-slate-500">
+                    {state.banner.visibilityScope === 'homepage-only' ? 'Csak Főoldal' : 'Minden Oldal'} · {state.banner.colorPreset} · {state.banner.animation}
+                  </div>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                aria-label="Információs Banner modul engedélyezése"
+                checked={state.banner.enabled}
+                onChange={(e) => onToggleModule('banner', e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer"
+              />
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Színben, méretben, betűstílusban és animációban testreszabható figyelemfelkeltő információs banner főoldali vagy globális megjelenítéssel.
+            </p>
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span className="text-[11px] font-mono text-slate-400">[wtk_info_banner]</span>
+            <button
+              type="button"
+              onClick={() => onNavigateTab('banner')}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Banner szín, betű és animáció</span>
             </button>
           </div>
         </div>
@@ -635,7 +693,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              WordPress 7.1, PHP 8.0+ és EU GDPR Rendszeraudit (v0.2.0)
+              WordPress 7.1, PHP 8.0+, EU GDPR &amp; Info Banner Rendszeraudit (v0.3.0)
             </h3>
           </div>
           <div className="flex items-center gap-3 text-xs">

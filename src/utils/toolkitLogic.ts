@@ -231,6 +231,26 @@ export const INITIAL_STATE: ToolkitState = {
       essentialOnly: 5690,
     },
   },
+  banner: {
+    enabled: true,
+    visibilityScope: 'all-pages',
+    stickyTop: true,
+    colorPreset: 'cobalt-gradient',
+    customBgHex: '#1E3A8A',
+    customTextHex: '#FFFFFF',
+    sizePreset: 'standard',
+    fontStyle: 'display-bold',
+    animation: 'pulse-glow',
+    badgeText: 'ÚJ VERZIÓ · v0.3.0',
+    headline: 'And ToolKit v0.3.0 megjelent: Testreszabható Információs Banner és GDPR Cookie Kezelő!',
+    subtext: 'Állítsa be egyedi színekkel, betűtípussal és animációval a főoldalon vagy minden oldalon.',
+    ctaLabel: 'Részletek megtekintése',
+    ctaUrl: '/kiadasok/and-toolkit-v0-3-0',
+    dismissible: true,
+    showIcon: true,
+    impressions: 29450,
+    clicks: 3840,
+  },
   performance: {
     minifyAssets: true,
     deferScripts: true,
@@ -329,7 +349,7 @@ export function calculatePerformanceMetrics(
   estimatedLoadMs: number;
   lighthouseScore: number;
 } {
-  let baseKb = 4.2 + activeModulesCount * 1.4;
+  let baseKb = 4.2 + activeModulesCount * 1.3;
   if (!perf.minifyAssets) baseKb += 4.8;
   if (!perf.svgSpritesOnly) baseKb += 6.5;
   if (!perf.zeroJqueryDependency) baseKb += 28.0;
@@ -382,7 +402,7 @@ export function validateNewPostInput(input: {
 }
 
 /**
- * Generate production-ready WordPress 7.1 & PHP 8.0+ Plugin file reflecting current v0.2.0 configuration
+ * Generate production-ready WordPress 7.1 & PHP 8.0+ Plugin file reflecting current v0.3.0 configuration
  */
 export function generateWordPressPluginPhp(state: ToolkitState): string {
   const enabledPlatforms = state.social.platforms
@@ -399,8 +419,8 @@ export function generateWordPressPluginPhp(state: ToolkitState): string {
 /**
  * Plugin Name:       And ToolKit
  * Plugin URI:        https://github.com/galandras12/and-toolkit
- * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó, látogatói/letöltési statisztika és kötelező GDPR Cookie (Süti) kezelő modul sötét/világos móddal.
- * Version:           0.2.0
+ * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó, látogatói/letöltési statisztika, kötelező GDPR Cookie kezelő és testreszabható Információs Banner modul sötét/világos móddal.
+ * Version:           0.3.0
  * Requires at least: 6.2
  * Tested up to:      7.1
  * Requires PHP:      8.0
@@ -416,7 +436,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class And_ToolKit_Plugin {
-    public const VERSION    = '0.2.0';
+    public const VERSION    = '0.3.0';
     public const AUTHOR     = 'galandras12+AI';
     public const WP_TARGET  = '7.1';
     public const PHP_TARGET = '8.0';
@@ -425,6 +445,7 @@ final class And_ToolKit_Plugin {
         add_action( 'admin_menu', [ __CLASS__, 'register_admin_menu' ] );
         add_action( 'widgets_init', [ __CLASS__, 'register_sidebar_widgets' ] );
         add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_frontend_assets' ] );
+        add_action( 'wp_body_open', [ __CLASS__, 'render_global_info_banner' ] );
         add_action( 'wp_footer', [ __CLASS__, 'render_gdpr_footer_banner' ] );
         add_action( 'rest_api_init', [ __CLASS__, 'register_rest_routes' ] );
 
@@ -434,6 +455,7 @@ final class And_ToolKit_Plugin {
         add_shortcode( 'wtk_social', [ __CLASS__, 'render_social_widget' ] );
         add_shortcode( 'wtk_stats', [ __CLASS__, 'render_stats_widget' ] );
         add_shortcode( 'wtk_cookie_consent', [ __CLASS__, 'render_cookie_consent_widget' ] );
+        add_shortcode( 'wtk_info_banner', [ __CLASS__, 'render_info_banner_shortcode' ] );
     }
 
     public static function register_admin_menu(): void {
@@ -499,6 +521,23 @@ final class And_ToolKit_Plugin {
                 'google_consent_mode_v2' => ${state.gdpr.googleConsentModeV2 ? 'true' : 'false'},
                 'auto_block_scripts'     => ${state.gdpr.autoBlockScripts ? 'true' : 'false'},
                 'default_categories'     => [ ${gdprCategoriesList} ],
+            ],
+            'banner'      => [
+                'enabled'          => ${state.banner.enabled ? 'true' : 'false'},
+                'visibility_scope' => '${state.banner.visibilityScope}',
+                'sticky_top'       => ${state.banner.stickyTop ? 'true' : 'false'},
+                'color_preset'     => '${state.banner.colorPreset}',
+                'custom_bg_hex'    => '${state.banner.customBgHex.replace(/'/g, "\\'")}',
+                'custom_text_hex'  => '${state.banner.customTextHex.replace(/'/g, "\\'")}',
+                'size_preset'      => '${state.banner.sizePreset}',
+                'font_style'       => '${state.banner.fontStyle}',
+                'animation'        => '${state.banner.animation}',
+                'badge_text'       => '${state.banner.badgeText.replace(/'/g, "\\'")}',
+                'headline'         => '${state.banner.headline.replace(/'/g, "\\'")}',
+                'subtext'          => '${state.banner.subtext.replace(/'/g, "\\'")}',
+                'cta_label'        => '${state.banner.ctaLabel.replace(/'/g, "\\'")}',
+                'cta_url'          => '${state.banner.ctaUrl.replace(/'/g, "\\'")}',
+                'dismissible'      => ${state.banner.dismissible ? 'true' : 'false'},
             ],
             'performance' => [
                 'minify_assets'   => ${state.performance.minifyAssets ? 'true' : 'false'},
@@ -625,6 +664,36 @@ final class And_ToolKit_Plugin {
         );
     }
 
+    public static function render_info_banner_shortcode( array|string $atts = [] ): string {
+        $config = self::get_config()['banner'];
+        if ( ! $config['enabled'] ) {
+            return '';
+        }
+        return sprintf(
+            '<aside class="atk-info-banner" data-scope="%s" data-color="%s" data-size="%s" data-font="%s" data-anim="%s"><strong>%s</strong> <span>%s</span> <a href="%s">%s</a></aside>',
+            esc_attr( $config['visibility_scope'] ),
+            esc_attr( $config['color_preset'] ),
+            esc_attr( $config['size_preset'] ),
+            esc_attr( $config['font_style'] ),
+            esc_attr( $config['animation'] ),
+            esc_html( $config['badge_text'] ),
+            esc_html( $config['headline'] ),
+            esc_url( $config['cta_url'] ),
+            esc_html( $config['cta_label'] )
+        );
+    }
+
+    public static function render_global_info_banner(): void {
+        $config = self::get_config()['banner'];
+        if ( ! $config['enabled'] || 'sidebar-only' === $config['visibility_scope'] ) {
+            return;
+        }
+        if ( 'homepage-only' === $config['visibility_scope'] && function_exists( 'is_front_page' ) && ! is_front_page() ) {
+            return;
+        }
+        echo self::render_info_banner_shortcode(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    }
+
     public static function render_gdpr_footer_banner(): void {
         $config = self::get_config()['gdpr'];
         if ( ! $config['enabled'] || 'sidebar-widget' === $config['display_style'] ) {
@@ -713,7 +782,7 @@ export interface AuditCheckItem {
 }
 
 /**
- * Automated static code & configuration audit verifying compatibility with WordPress 7.1, PHP 8.0+ and EU GDPR Cookie requirements
+ * Automated static code & configuration audit verifying compatibility with WordPress 7.1, PHP 8.0+, EU GDPR Cookie & v0.3.0 Info Banner requirements
  */
 export function auditWordPressPhpCompatibility(
   phpCode: string,
@@ -736,6 +805,8 @@ export function auditWordPressPhpCompatibility(
     'render_social_widget',
     'render_stats_widget',
     'render_cookie_consent_widget',
+    'render_info_banner_shortcode',
+    'render_global_info_banner',
     'render_gdpr_footer_banner',
     'register_rest_routes',
     'handle_ajax_search',
@@ -762,32 +833,44 @@ export function auditWordPressPhpCompatibility(
     {
       id: 'php80-match-expression',
       category: 'PHP 8.0+',
-      title: 'PHP 8.0 Match Kifejezés & v0.2.0 Osztálykonstansok',
+      title: 'PHP 8.0 Match Kifejezés & v0.3.0 Osztálykonstansok',
       description:
-        'A sablonválasztó a típusbiztos PHP 8.0 match () kifejezést és a public const VERSION = \'0.2.0\' konstanst használja.',
+        'A sablonválasztó a típusbiztos PHP 8.0 match () kifejezést és a public const VERSION = \'0.3.0\' konstanst használja.',
       passed:
         phpCode.includes("match ( $atts['style'] )") &&
-        phpCode.includes("public const VERSION    = '0.2.0';"),
+        phpCode.includes("public const VERSION    = '0.3.0';"),
     },
     {
       id: 'wp71-header-meta',
       category: 'WordPress 7.1',
-      title: 'WordPress 7.1 Fejléc és v0.2.0 Metaadat Szabvány',
+      title: 'WordPress 7.1 Fejléc és v0.3.0 Metaadat Szabvány',
       description:
-        'Plugin Name: And ToolKit, Version: 0.2.0, Author: galandras12+AI és Tested up to: 7.1 fejléc mezők hiánytalanul beállítva.',
+        'Plugin Name: And ToolKit, Version: 0.3.0, Author: galandras12+AI és Tested up to: 7.1 fejléc mezők hiánytalanul beállítva.',
       passed:
         phpCode.includes('Plugin Name:       And ToolKit') &&
-        phpCode.includes('Version:           0.2.0') &&
+        phpCode.includes('Version:           0.3.0') &&
         phpCode.includes('Tested up to:      7.1') &&
         phpCode.includes('Author:            galandras12+AI'),
     },
     {
       id: 'wp71-hook-callbacks',
       category: 'WordPress 7.1',
-      title: 'Minden Hook, 5 Shortcode és 3 REST Végpont Implementálva',
+      title: 'Minden Hook, 6 Shortcode és 3 REST Végpont Implementálva',
       description:
-        'Az összes regisztrált add_action, add_shortcode (beleértve a [wtk_cookie_consent] rövidkódot) és register_rest_route (16/16 metódus) rendelkezik valódi PHP törzzsel.',
+        'Az összes regisztrált add_action, add_shortcode (beleértve a [wtk_cookie_consent] és [wtk_info_banner] rövidkódokat) és register_rest_route (18/18 metódus) rendelkezik valódi PHP törzzsel.',
       passed: allMethodsImplemented,
+    },
+    {
+      id: 'info-banner-module',
+      category: 'WordPress 7.1',
+      title: 'v0.3.0 Állandó Információs Banner (wp_body_open & is_front_page)',
+      description:
+        'Színben, méretben, betűstílusban és animációban testreszabható információs sáv főoldali (is_front_page) vagy globális (minden oldalon) megjelenítéssel.',
+      passed:
+        phpCode.includes("add_action( 'wp_body_open'") &&
+        phpCode.includes("add_shortcode( 'wtk_info_banner'") &&
+        phpCode.includes('render_global_info_banner') &&
+        Boolean(state.banner.headline),
     },
     {
       id: 'gdpr-cookie-compliance',
@@ -842,3 +925,4 @@ export function auditWordPressPhpCompatibility(
     checks,
   };
 }
+

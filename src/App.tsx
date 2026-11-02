@@ -5,6 +5,7 @@ import {
   Check,
   Code2,
   LayoutDashboard,
+  Megaphone,
   Moon,
   RotateCcw,
   Search,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 import {
   ActiveTab,
+  BannerConfig,
   CalendarConfig,
   GdprCategoryId,
   GdprConfig,
@@ -32,10 +34,11 @@ import { SearchModulePanel } from './components/SearchModulePanel';
 import { SocialModulePanel } from './components/SocialModulePanel';
 import { StatsModulePanel } from './components/StatsModulePanel';
 import { GdprCookieModulePanel } from './components/GdprCookieModulePanel';
+import { InfoBannerModulePanel } from './components/InfoBannerModulePanel';
 import { OverviewAndExportPanel } from './components/OverviewAndExportPanel';
 import { AndWrenchLogo } from './components/AndWrenchLogo';
 
-const STORAGE_KEY = 'and_toolkit_wp_state_v020';
+const STORAGE_KEY = 'and_toolkit_wp_state_v030';
 
 export default function App() {
   const [state, setState] = useState<ToolkitState>(() => {
@@ -119,6 +122,13 @@ export default function App() {
     }));
   };
 
+  const updateBanner = (patch: Partial<BannerConfig>) => {
+    setState((prev) => ({
+      ...prev,
+      banner: { ...prev.banner, ...patch },
+    }));
+  };
+
   const updatePerformance = (patch: Partial<PerformanceConfig>) => {
     setState((prev) => ({
       ...prev,
@@ -127,13 +137,25 @@ export default function App() {
   };
 
   const handleToggleModule = (
-    module: 'calendar' | 'search' | 'social' | 'stats' | 'gdpr',
+    module: 'calendar' | 'search' | 'social' | 'stats' | 'gdpr' | 'banner',
     enabled: boolean
   ) => {
     setState((prev) => ({
       ...prev,
       [module]: { ...prev[module], enabled },
     }));
+  };
+
+  const handleSimulateBannerClick = () => {
+    setState((prev) => ({
+      ...prev,
+      banner: {
+        ...prev.banner,
+        impressions: prev.banner.impressions + 5,
+        clicks: prev.banner.clicks + 1,
+      },
+    }));
+    triggerSaveFeedback('Információs Banner CTA kattintás rögzítve (+1)');
   };
 
   const handleToggleGdprCategoryDefault = (id: GdprCategoryId) => {
@@ -260,7 +282,7 @@ export default function App() {
 
   const handleResetAll = () => {
     setState(INITIAL_STATE);
-    triggerSaveFeedback('Alapértelmezett And ToolKit v0.2.0 beállítások visszaállítva');
+    triggerSaveFeedback('Alapértelmezett And ToolKit v0.3.0 beállítások visszaállítva');
   };
 
   const activeModulesCount = [
@@ -269,6 +291,7 @@ export default function App() {
     state.social.enabled,
     state.stats.enabled,
     state.gdpr.enabled,
+    state.banner.enabled,
   ].filter(Boolean).length;
 
   const perf = calculatePerformanceMetrics(state.performance, activeModulesCount);
@@ -379,6 +402,20 @@ export default function App() {
           >
             GDPR Cookie
           </a>
+          <a
+            href="#banner"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveTab('banner');
+            }}
+            className={`py-1 transition-colors whitespace-nowrap shrink-0 border-b-2 ${
+              activeTab === 'banner'
+                ? 'border-blue-600 text-slate-900 dark:text-slate-100 font-semibold'
+                : 'border-transparent hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            Info Banner
+          </a>
         </nav>
 
         {/* Zone 3: 1 Primary Action */}
@@ -406,14 +443,14 @@ export default function App() {
               And ToolKit
             </span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono tabular-nums">Verzió: 0.2.0</span>
+            <span className="font-mono tabular-nums">Verzió: 0.3.0</span>
             <span aria-hidden="true">·</span>
             <span>
               Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong>
             </span>
             <span aria-hidden="true">·</span>
             <span className="font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-              {activeModulesCount}/5 modul · Betöltés: {perf.estimatedLoadMs}ms ({perf.bundleSizeKb} KB)
+              {activeModulesCount}/6 modul · Betöltés: {perf.estimatedLoadMs}ms ({perf.bundleSizeKb} KB)
             </span>
           </div>
 
@@ -485,6 +522,7 @@ export default function App() {
             { id: 'social' as const, label: 'Megosztás', icon: Share2 },
             { id: 'stats' as const, label: 'Statisztika', icon: BarChart3 },
             { id: 'gdpr' as const, label: 'GDPR Cookie', icon: ShieldCheck },
+            { id: 'banner' as const, label: 'Info Banner', icon: Megaphone },
             { id: 'export' as const, label: 'PHP Kód', icon: Code2 },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -568,6 +606,14 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'banner' && (
+              <InfoBannerModulePanel
+                config={state.banner}
+                onUpdateConfig={updateBanner}
+                onSimulateClick={handleSimulateBannerClick}
+              />
+            )}
+
             {activeTab === 'export' && (
               <OverviewAndExportPanel
                 mode="export"
@@ -589,6 +635,7 @@ export default function App() {
               onShareClick={handleShareClick}
               onTriggerDownload={handleTriggerDownload}
               onRecordGdprConsent={handleRecordGdprConsent}
+              onBannerClick={handleSimulateBannerClick}
             />
           </div>
         </div>
@@ -598,7 +645,7 @@ export default function App() {
       <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4">
         <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
           <span>
-            And ToolKit v0.2.0 · Készítő: galandras12+AI · Auditálva: WordPress 7.1, PHP 8.0+ &amp; EU GDPR
+            And ToolKit v0.3.0 · Készítő: galandras12+AI · Auditálva: WordPress 7.1, PHP 8.0+ &amp; EU GDPR
           </span>
           <div className="flex items-center gap-4">
             <button

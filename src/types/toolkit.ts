@@ -7,6 +7,7 @@ export type ActiveTab =
   | 'social'
   | 'stats'
   | 'gdpr'
+  | 'banner'
   | 'export';
 
 export type CalendarWidgetStyle = 'compact' | 'cards' | 'grid' | 'timeline';
@@ -163,6 +164,39 @@ export interface GdprConfig {
   };
 }
 
+export type BannerVisibilityScope = 'all-pages' | 'homepage-only' | 'blog-posts' | 'sidebar-only';
+export type BannerColorPreset =
+  | 'cobalt-gradient'
+  | 'emerald-aurora'
+  | 'amber-highlight'
+  | 'rose-alert'
+  | 'slate-obsidian'
+  | 'custom';
+export type BannerSizePreset = 'compact' | 'standard' | 'large-hero';
+export type BannerFontStyle = 'sans-clean' | 'display-bold' | 'serif-editorial' | 'mono-tech';
+export type BannerAnimationType = 'none' | 'pulse-glow' | 'slide-down' | 'shimmer' | 'marquee';
+
+export interface BannerConfig {
+  enabled: boolean;
+  visibilityScope: BannerVisibilityScope;
+  stickyTop: boolean;
+  colorPreset: BannerColorPreset;
+  customBgHex: string;
+  customTextHex: string;
+  sizePreset: BannerSizePreset;
+  fontStyle: BannerFontStyle;
+  animation: BannerAnimationType;
+  badgeText: string;
+  headline: string;
+  subtext: string;
+  ctaLabel: string;
+  ctaUrl: string;
+  dismissible: boolean;
+  showIcon: boolean;
+  impressions: number;
+  clicks: number;
+}
+
 export interface PerformanceConfig {
   minifyAssets: boolean;
   deferScripts: boolean;
@@ -180,6 +214,8 @@ export interface ToolkitState {
   social: SocialConfig;
   stats: StatsConfig;
   gdpr: GdprConfig;
+  banner: BannerConfig;
   performance: PerformanceConfig;
   posts: ScheduledPostItem[];
 }
+

@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       And ToolKit
  * Plugin URI:        https://github.com/galandras12/and-toolkit
- * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó és látogatói/letöltési statisztika modul sötét/világos móddal.
- * Version:           0.1.0
+ * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó, látogatói/letöltési statisztika és kötelező GDPR Cookie (Süti) kezelő modul sötét/világos móddal.
+ * Version:           0.2.0
  * Requires at least: 6.2
  * Tested up to:      7.1
  * Requires PHP:      8.0
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class And_ToolKit_Plugin {
-    public const VERSION    = '0.1.0';
+    public const VERSION    = '0.2.0';
     public const AUTHOR     = 'galandras12+AI';
     public const WP_TARGET  = '7.1';
     public const PHP_TARGET = '8.0';
@@ -28,6 +28,7 @@ final class And_ToolKit_Plugin {
         add_action( 'admin_menu', [ __CLASS__, 'register_admin_menu' ] );
         add_action( 'widgets_init', [ __CLASS__, 'register_sidebar_widgets' ] );
         add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_frontend_assets' ] );
+        add_action( 'wp_footer', [ __CLASS__, 'render_gdpr_footer_banner' ] );
         add_action( 'rest_api_init', [ __CLASS__, 'register_rest_routes' ] );
 
         // Rövidkódok (Shortcodes) regisztrálása WordPress 7.1 blokk és klasszikus témákhoz
@@ -35,6 +36,7 @@ final class And_ToolKit_Plugin {
         add_shortcode( 'wtk_search', [ __CLASS__, 'render_search_widget' ] );
         add_shortcode( 'wtk_social', [ __CLASS__, 'render_social_widget' ] );
         add_shortcode( 'wtk_stats', [ __CLASS__, 'render_stats_widget' ] );
+        add_shortcode( 'wtk_cookie_consent', [ __CLASS__, 'render_cookie_consent_widget' ] );
     }
 
     public static function register_admin_menu(): void {
@@ -90,6 +92,16 @@ final class And_ToolKit_Plugin {
                 'number_format'    => 'compact',
                 'unique_visitors'  => true,
                 'total_downloads'  => true,
+            ],
+            'gdpr'        => [
+                'enabled'                => true,
+                'title'                  => 'GDPR Süti (Cookie) és Adatvédelmi Beállítások',
+                'display_style'          => 'sidebar-widget',
+                'privacy_url'            => '/adatvedelmi-tajekoztato',
+                'expiry_days'            => 180,
+                'google_consent_mode_v2' => true,
+                'auto_block_scripts'     => true,
+                'default_categories'     => [ 'necessary' => true, 'preferences' => true, 'analytics' => false, 'marketing' => false ],
             ],
             'performance' => [
                 'minify_assets'   => true,
@@ -198,6 +210,29 @@ final class And_ToolKit_Plugin {
         );
     }
 
+    public static function render_cookie_consent_widget( array|string $atts = [] ): string {
+        $config = self::get_config()['gdpr'];
+        if ( ! $config['enabled'] ) {
+            return '';
+        }
+        return sprintf(
+            '<section class="atk-widget atk-gdpr-cookie" data-style="%s" data-expiry="%d" data-gcm-v2="%s"><h3>%s</h3><a href="%s">Adatvédelmi tájékoztató</a></section>',
+            esc_attr( $config['display_style'] ),
+            absint( $config['expiry_days'] ),
+            esc_attr( $config['google_consent_mode_v2'] ? 'true' : 'false' ),
+            esc_html( $config['title'] ),
+            esc_url( $config['privacy_url'] )
+        );
+    }
+
+    public static function render_gdpr_footer_banner(): void {
+        $config = self::get_config()['gdpr'];
+        if ( ! $config['enabled'] || 'sidebar-widget' === $config['display_style'] ) {
+            return;
+        }
+        echo self::render_cookie_consent_widget(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    }
+
     public static function register_rest_routes(): void {
         register_rest_route( 'and-toolkit/v1', '/search', [
             'methods'             => 'GET',
@@ -214,6 +249,17 @@ final class And_ToolKit_Plugin {
             'methods'             => 'POST',
             'callback'            => [ __CLASS__, 'increment_download_counter' ],
             'permission_callback' => '__return_true',
+        ] );
+        register_rest_route( 'and-toolkit/v1', '/cookie-consent', [
+            'methods'             => 'POST',
+            'callback'            => [ __CLASS__, 'handle_cookie_consent' ],
+            'permission_callback' => '__return_true',
+            'args'                => [
+                'consent_level' => [
+                    'required'          => true,
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
         ] );
     }
 
@@ -236,6 +282,21 @@ final class And_ToolKit_Plugin {
         update_option( 'and_toolkit_downloads_total', $current + 1, false );
 
         return new \WP_REST_Response( [ 'downloads' => $current + 1 ], 200 );
+    }
+
+    public static function handle_cookie_consent( \WP_REST_Request $request ): \WP_REST_Response {
+        $level = sanitize_text_field( (string) $request->get_param( 'consent_level' ) );
+        $allowed_levels = [ 'all', 'custom', 'essential' ];
+        $clean_level = in_array( $level, $allowed_levels, true ) ? $level : 'essential';
+
+        return new \WP_REST_Response(
+            [
+                'status'        => 'recorded',
+                'consent_level' => $clean_level,
+                'version'       => self::VERSION,
+            ],
+            200
+        );
     }
 }
 

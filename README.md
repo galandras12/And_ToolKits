@@ -1,8 +1,8 @@
 # And ToolKit — WordPress 7.1 & PHP 8.0+ Plugin & Widget Studio
 
-- **Verzió:** `0.1.0`
+- **Verzió:** `0.2.0`
 - **Készítő:** `galandras12+AI`
-- **Kompatibilitás:** WordPress `6.2 – 7.1+` · PHP `8.0+` (`declare(strict_types=1);`)
+- **Kompatibilitás:** WordPress `6.2 – 7.1+` · PHP `8.0+` (`declare(strict_types=1);`) · EU GDPR & Google Consent Mode v2
 - **Licenc:** GPL v2 or later
 
 Az **And ToolKit** egy modern, sötét és világos módot is támogató WordPress adminisztrációs eszköztár és reszponzív oldalsáv widget-gyűjtemény, egyedi **villáskulcsba foglalt `&` (and jel)** logóval.
@@ -19,24 +19,13 @@ Az **And ToolKit** egy modern, sötét és világos módot is támogató WordPre
    - Külső követőkódoktól mentes, gyors SVG megosztó gombok (Facebook, X, LinkedIn, WhatsApp, Telegram, Reddit, Pinterest, E-mail + Link másolása) 5 gombstílussal és UTM paraméterezéssel.
 4. **Hatékonyságmérő Statisztika Modul (`[wtk_stats]`)**
    - Egyedi látogatók, letöltések, aktív olvasók és megosztások mérése és testreszabott oldalsávos megjelenítése (`compact`, `exact`, `comma` számformázással és heti mini grafikonnal).
+5. **GDPR Kötelező Süti (Cookie) és Adatvédelmi Hozzájárulás Kezelő (`[wtk_cookie_consent]`) — ÚJ a v0.2.0-ban**
+   - EU GDPR és ePrivacy irányelveknek megfelelő süti-hozzájárulási felület 4 granuláris kategóriával (*Szükséges*, *Funkcionális*, *Statisztikai*, *Marketing*), Google Consent Mode v2 támogatással, előzetes szkript-blokkolással és bármikor módosítható hozzájárulással.
 
 ---
 
 ## Telepítés WordPress 7.1 alatt
 
 1. Töltse le vagy másolja az `and-toolkit.php` fájlt a WordPress telepítés `/wp-content/plugins/and-toolkit/` mappájába.
-2. Aktiválja az **And ToolKit (v0.1.0)** bővítményt a **WordPress Admin → Bővítmények** menüpontban.
-3. Használja a `[wtk_calendar]`, `[wtk_search]`, `[wtk_social]` és `[wtk_stats]` rövidkódokat vagy a Gutenberg blokkokat az oldalsávban.
-
-## Fejlesztői Admin Stúdió Indítása (React + Vite)
-
-```bash
-npm install
-npm run dev
-```
-
-Egységtesztek és WordPress 7.1 + PHP 8.0 kompatibilitási audit futtatása:
-
-```bash
-npx --yes tsx --test src/utils/toolkitLogic.test.ts
-```
+2. Aktiválja az **And ToolKit (v0.2.0)** bővítményt a **WordPress Admin → Bővítmények** menüpontban.
+3. Használja a `[wtk_calendar]`, `[wtk_search]`, `[wtk_social]`, `[wtk_stats]` és `[wtk_cookie_consent]` rövidkódokat vagy a Gutenberg blokkokat az oldalsávban.

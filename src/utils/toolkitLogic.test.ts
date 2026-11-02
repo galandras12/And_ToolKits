@@ -49,7 +49,7 @@ test('formatMetricValue formats compact, comma, and exact space-separated number
 });
 
 test('calculatePerformanceMetrics rewards zero-jQuery and minification', () => {
-  const fast = calculatePerformanceMetrics(INITIAL_STATE.performance, 4);
+  const fast = calculatePerformanceMetrics(INITIAL_STATE.performance, 5);
   const slow = calculatePerformanceMetrics(
     {
       minifyAssets: false,
@@ -58,7 +58,7 @@ test('calculatePerformanceMetrics rewards zero-jQuery and minification', () => {
       objectCacheTtlMinutes: 0,
       zeroJqueryDependency: false,
     },
-    4
+    5
   );
   assert.equal(fast.bundleSizeKb < slow.bundleSizeKb, true);
   assert.equal(fast.lighthouseScore > slow.lighthouseScore, true);
@@ -75,18 +75,17 @@ test('validateNewPostInput enforces required fields', () => {
   );
 });
 
-test('generateWordPressPluginPhp and auditWordPressPhpCompatibility pass all WordPress 7.1 & PHP 8.0 checks', () => {
+test('generateWordPressPluginPhp and auditWordPressPhpCompatibility pass all v0.2.0 WordPress 7.1, PHP 8.0 & GDPR checks', () => {
   const php = generateWordPressPluginPhp(INITIAL_STATE);
   assert.equal(php.includes('Plugin Name:       And ToolKit'), true);
-  assert.equal(php.includes('Version:           0.1.0'), true);
+  assert.equal(php.includes('Version:           0.2.0'), true);
   assert.equal(php.includes('Tested up to:      7.1'), true);
   assert.equal(php.includes('Requires PHP:      8.0'), true);
   assert.equal(php.includes('Author:            galandras12+AI'), true);
   assert.equal(php.includes('declare(strict_types=1);'), true);
-  assert.equal(php.includes("add_shortcode( 'wtk_calendar'"), true);
+  assert.equal(php.includes("add_shortcode( 'wtk_cookie_consent'"), true);
 
   const audit = auditWordPressPhpCompatibility(php, INITIAL_STATE);
   assert.equal(audit.allPassed, true);
-  assert.equal(audit.passedCount, 7);
+  assert.equal(audit.passedCount, 8);
 });
-

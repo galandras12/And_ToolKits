@@ -9,11 +9,14 @@ import {
   RotateCcw,
   Search,
   Share2,
+  ShieldCheck,
   Sun,
 } from 'lucide-react';
 import {
   ActiveTab,
   CalendarConfig,
+  GdprCategoryId,
+  GdprConfig,
   PerformanceConfig,
   ScheduledPostItem,
   SearchConfig,
@@ -28,10 +31,11 @@ import { CalendarModulePanel } from './components/CalendarModulePanel';
 import { SearchModulePanel } from './components/SearchModulePanel';
 import { SocialModulePanel } from './components/SocialModulePanel';
 import { StatsModulePanel } from './components/StatsModulePanel';
+import { GdprCookieModulePanel } from './components/GdprCookieModulePanel';
 import { OverviewAndExportPanel } from './components/OverviewAndExportPanel';
 import { AndWrenchLogo } from './components/AndWrenchLogo';
 
-const STORAGE_KEY = 'and_toolkit_wp_state_v010';
+const STORAGE_KEY = 'and_toolkit_wp_state_v020';
 
 export default function App() {
   const [state, setState] = useState<ToolkitState>(() => {
@@ -108,6 +112,13 @@ export default function App() {
     }));
   };
 
+  const updateGdpr = (patch: Partial<GdprConfig>) => {
+    setState((prev) => ({
+      ...prev,
+      gdpr: { ...prev.gdpr, ...patch },
+    }));
+  };
+
   const updatePerformance = (patch: Partial<PerformanceConfig>) => {
     setState((prev) => ({
       ...prev,
@@ -116,13 +127,45 @@ export default function App() {
   };
 
   const handleToggleModule = (
-    module: 'calendar' | 'search' | 'social' | 'stats',
+    module: 'calendar' | 'search' | 'social' | 'stats' | 'gdpr',
     enabled: boolean
   ) => {
     setState((prev) => ({
       ...prev,
       [module]: { ...prev[module], enabled },
     }));
+  };
+
+  const handleToggleGdprCategoryDefault = (id: GdprCategoryId) => {
+    setState((prev) => ({
+      ...prev,
+      gdpr: {
+        ...prev.gdpr,
+        categories: prev.gdpr.categories.map((cat) =>
+          cat.id === id && !cat.required
+            ? { ...cat, defaultEnabled: !cat.defaultEnabled }
+            : cat
+        ),
+      },
+    }));
+  };
+
+  const handleRecordGdprConsent = (type: 'all' | 'custom' | 'essential') => {
+    setState((prev) => ({
+      ...prev,
+      gdpr: {
+        ...prev.gdpr,
+        consentStats: {
+          acceptedAll:
+            prev.gdpr.consentStats.acceptedAll + (type === 'all' ? 1 : 0),
+          customSelection:
+            prev.gdpr.consentStats.customSelection + (type === 'custom' ? 1 : 0),
+          essentialOnly:
+            prev.gdpr.consentStats.essentialOnly + (type === 'essential' ? 1 : 0),
+        },
+      },
+    }));
+    triggerSaveFeedback('GDPR süti-hozzájárulás naplózva (+1)');
   };
 
   const handleAddPost = (newPost: ScheduledPostItem) => {
@@ -217,7 +260,7 @@ export default function App() {
 
   const handleResetAll = () => {
     setState(INITIAL_STATE);
-    triggerSaveFeedback('Alapértelmezett And ToolKit v0.1.0 beállítások visszaállítva');
+    triggerSaveFeedback('Alapértelmezett And ToolKit v0.2.0 beállítások visszaállítva');
   };
 
   const activeModulesCount = [
@@ -225,6 +268,7 @@ export default function App() {
     state.search.enabled,
     state.social.enabled,
     state.stats.enabled,
+    state.gdpr.enabled,
   ].filter(Boolean).length;
 
   const perf = calculatePerformanceMetrics(state.performance, activeModulesCount);
@@ -246,10 +290,10 @@ export default function App() {
           <span>And ToolKit</span>
         </a>
 
-        {/* Zone 2: 5 concise single-line text navigation links */}
+        {/* Zone 2: Concise single-line text navigation links */}
         <nav
           aria-label="Fő navigáció"
-          className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-400"
+          className="hidden md:flex items-center gap-5 text-sm font-medium text-slate-600 dark:text-slate-400"
         >
           <a
             href="#overview"
@@ -321,6 +365,20 @@ export default function App() {
           >
             Statisztikák
           </a>
+          <a
+            href="#gdpr"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveTab('gdpr');
+            }}
+            className={`py-1 transition-colors whitespace-nowrap shrink-0 border-b-2 ${
+              activeTab === 'gdpr'
+                ? 'border-blue-600 text-slate-900 dark:text-slate-100 font-semibold'
+                : 'border-transparent hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            GDPR Cookie
+          </a>
         </nav>
 
         {/* Zone 3: 1 Primary Action */}
@@ -348,14 +406,14 @@ export default function App() {
               And ToolKit
             </span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono tabular-nums">Verzió: 0.1.0</span>
+            <span className="font-mono tabular-nums">Verzió: 0.2.0</span>
             <span aria-hidden="true">·</span>
             <span>
               Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong>
             </span>
             <span aria-hidden="true">·</span>
             <span className="font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-              Betöltés: {perf.estimatedLoadMs}ms ({perf.bundleSizeKb} KB)
+              {activeModulesCount}/5 modul · Betöltés: {perf.estimatedLoadMs}ms ({perf.bundleSizeKb} KB)
             </span>
           </div>
 
@@ -426,6 +484,7 @@ export default function App() {
             { id: 'search' as const, label: 'Kereső', icon: Search },
             { id: 'social' as const, label: 'Megosztás', icon: Share2 },
             { id: 'stats' as const, label: 'Statisztika', icon: BarChart3 },
+            { id: 'gdpr' as const, label: 'GDPR Cookie', icon: ShieldCheck },
             { id: 'export' as const, label: 'PHP Kód', icon: Code2 },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -500,6 +559,15 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'gdpr' && (
+              <GdprCookieModulePanel
+                config={state.gdpr}
+                onUpdateConfig={updateGdpr}
+                onToggleCategoryDefault={handleToggleGdprCategoryDefault}
+                onRecordConsent={handleRecordGdprConsent}
+              />
+            )}
+
             {activeTab === 'export' && (
               <OverviewAndExportPanel
                 mode="export"
@@ -520,6 +588,7 @@ export default function App() {
               }
               onShareClick={handleShareClick}
               onTriggerDownload={handleTriggerDownload}
+              onRecordGdprConsent={handleRecordGdprConsent}
             />
           </div>
         </div>
@@ -529,7 +598,7 @@ export default function App() {
       <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4">
         <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
           <span>
-            And ToolKit v0.1.0 · Készítő: galandras12+AI · Auditálva: WordPress 7.1 &amp; PHP 8.0+
+            And ToolKit v0.2.0 · Készítő: galandras12+AI · Auditálva: WordPress 7.1, PHP 8.0+ &amp; EU GDPR
           </span>
           <div className="flex items-center gap-4">
             <button

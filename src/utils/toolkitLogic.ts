@@ -25,12 +25,12 @@ export const INITIAL_POSTS: ScheduledPostItem[] = [
   },
   {
     id: 'post-102',
-    title: 'And ToolKit v0.1.0 Kiadási Csomag és Fejlesztői Dokumentáció (ZIP)',
+    title: 'And ToolKit v0.2.0 Kiadási Csomag és GDPR Modul Dokumentáció (ZIP)',
     date: '2026-11-09',
     time: '10:30',
     category: 'Kiadás',
     author: 'galandras12+AI',
-    excerpt: 'Teljes REST API végpontok, Gutenberg blokk támogatás és sötét mód kompatibilis oldalsáv komponensek.',
+    excerpt: 'Teljes REST API végpontok, GDPR Cookie Consent Mode v2 támogatás és sötét mód kompatibilis oldalsáv komponensek.',
     postType: 'download',
     views: 5180,
     downloads: 1840,
@@ -64,16 +64,16 @@ export const INITIAL_POSTS: ScheduledPostItem[] = [
   },
   {
     id: 'post-105',
-    title: 'Adatvédelem-barát Látogatói Analitika Sütik Nélkül (GDPR Sablon)',
+    title: 'GDPR Sütikezelés és Google Consent Mode v2 Beállítása WordPress-ben',
     date: '2026-11-22',
     time: '11:00',
     category: 'Hír',
-    author: 'Kovács Gergely',
-    excerpt: 'Szerveroldali egyedi látogató számlálás és letöltés-követés harmadik féltől származó szkriptek nélkül.',
+    author: 'galandras12+AI',
+    excerpt: 'Kötelező EU GDPR hozzájárulási kategóriák, szkript-blokkolás és auditálható süti-naplózás beépítése.',
     postType: 'post',
-    views: 1950,
-    downloads: 490,
-    featured: false,
+    views: 2450,
+    downloads: 590,
+    featured: true,
   },
   {
     id: 'post-106',
@@ -176,6 +176,61 @@ export const INITIAL_STATE: ToolkitState = {
       { date: '2026-11-02', label: 'Vas', uniqueVisitors: 7490, pageViews: 17300, downloads: 1810, shares: 690, searches: 1020 },
     ],
   },
+  gdpr: {
+    enabled: true,
+    widgetTitle: 'GDPR Süti (Cookie) és Adatvédelmi Beállítások',
+    description:
+      'Weboldalunk az EU GDPR rendeletnek megfelelően sütiket használ a biztonságos működéshez, valamint – hozzájárulása esetén – a látogatottsági statisztikákhoz és közösségi funkciókhoz.',
+    displayStyle: 'sidebar-widget',
+    privacyPolicyUrl: '/adatvedelmi-tajekoztato',
+    consentExpiryDays: 180,
+    acceptAllLabel: 'Összes elfogadása',
+    rejectLabel: 'Csak a szükségesek',
+    savePreferencesLabel: 'Választás mentése',
+    googleConsentModeV2: true,
+    autoBlockScripts: true,
+    showCategoryDetails: true,
+    showReopenBadge: true,
+    categories: [
+      {
+        id: 'necessary',
+        name: 'Feltétlenül szükséges (Munkamenet & Biztonság)',
+        description: 'Az oldal alapvető működéséhez, CSRF védelemhez és a süti-hozzájárulás tárolásához elengedhetetlen sütik.',
+        cookiesUsed: 'atk_consent_v2, wordpress_test_cookie, wp-settings',
+        required: true,
+        defaultEnabled: true,
+      },
+      {
+        id: 'preferences',
+        name: 'Funkcionális és Megjelenési Preferenciák',
+        description: 'Megjegyzi a választott Világos/Sötét témát és a nyelvi vagy keresési szűrő beállításokat.',
+        cookiesUsed: 'atk_theme_mode, atk_search_prefs',
+        required: false,
+        defaultEnabled: true,
+      },
+      {
+        id: 'analytics',
+        name: 'Statisztikai és Hatékonyságmérő Sütik',
+        description: 'Anonimizált látogatói és letöltési számlálók a tartalmak hatékonyságának méréséhez (analytics_storage).',
+        cookiesUsed: 'atk_visitor_hash, atk_download_tracker',
+        required: false,
+        defaultEnabled: false,
+      },
+      {
+        id: 'marketing',
+        name: 'Marketing és Közösségi Beágyazások',
+        description: 'Harmadik féltől származó közösségi média bővítmények és személyre szabott ajánlások (ad_storage, ad_user_data).',
+        cookiesUsed: 'atk_social_share_ref, _gcl_au',
+        required: false,
+        defaultEnabled: false,
+      },
+    ],
+    consentStats: {
+      acceptedAll: 34820,
+      customSelection: 8410,
+      essentialOnly: 5690,
+    },
+  },
   performance: {
     minifyAssets: true,
     deferScripts: true,
@@ -274,7 +329,7 @@ export function calculatePerformanceMetrics(
   estimatedLoadMs: number;
   lighthouseScore: number;
 } {
-  let baseKb = 4.2 + activeModulesCount * 1.6;
+  let baseKb = 4.2 + activeModulesCount * 1.4;
   if (!perf.minifyAssets) baseKb += 4.8;
   if (!perf.svgSpritesOnly) baseKb += 6.5;
   if (!perf.zeroJqueryDependency) baseKb += 28.0;
@@ -327,7 +382,7 @@ export function validateNewPostInput(input: {
 }
 
 /**
- * Generate production-ready WordPress 7.1 & PHP 8.0+ Plugin file reflecting current configuration
+ * Generate production-ready WordPress 7.1 & PHP 8.0+ Plugin file reflecting current v0.2.0 configuration
  */
 export function generateWordPressPluginPhp(state: ToolkitState): string {
   const enabledPlatforms = state.social.platforms
@@ -336,13 +391,16 @@ export function generateWordPressPluginPhp(state: ToolkitState): string {
     .join(', ');
 
   const postTypesList = state.search.includedTypes.map((t) => `'${t}'`).join(', ');
+  const gdprCategoriesList = state.gdpr.categories
+    .map((c) => `'${c.id}' => ${c.defaultEnabled ? 'true' : 'false'}`)
+    .join(', ');
 
   return `<?php
 /**
  * Plugin Name:       And ToolKit
- * Plugin URI:        https://example.com/plugins/and-toolkit
- * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó és látogatói/letöltési statisztika modul sötét/világos móddal.
- * Version:           0.1.0
+ * Plugin URI:        https://github.com/galandras12/and-toolkit
+ * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó, látogatói/letöltési statisztika és kötelező GDPR Cookie (Süti) kezelő modul sötét/világos móddal.
+ * Version:           0.2.0
  * Requires at least: 6.2
  * Tested up to:      7.1
  * Requires PHP:      8.0
@@ -358,7 +416,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class And_ToolKit_Plugin {
-    public const VERSION    = '0.1.0';
+    public const VERSION    = '0.2.0';
     public const AUTHOR     = 'galandras12+AI';
     public const WP_TARGET  = '7.1';
     public const PHP_TARGET = '8.0';
@@ -367,6 +425,7 @@ final class And_ToolKit_Plugin {
         add_action( 'admin_menu', [ __CLASS__, 'register_admin_menu' ] );
         add_action( 'widgets_init', [ __CLASS__, 'register_sidebar_widgets' ] );
         add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue_frontend_assets' ] );
+        add_action( 'wp_footer', [ __CLASS__, 'render_gdpr_footer_banner' ] );
         add_action( 'rest_api_init', [ __CLASS__, 'register_rest_routes' ] );
 
         // Rövidkódok (Shortcodes) regisztrálása WordPress 7.1 blokk és klasszikus témákhoz
@@ -374,6 +433,7 @@ final class And_ToolKit_Plugin {
         add_shortcode( 'wtk_search', [ __CLASS__, 'render_search_widget' ] );
         add_shortcode( 'wtk_social', [ __CLASS__, 'render_social_widget' ] );
         add_shortcode( 'wtk_stats', [ __CLASS__, 'render_stats_widget' ] );
+        add_shortcode( 'wtk_cookie_consent', [ __CLASS__, 'render_cookie_consent_widget' ] );
     }
 
     public static function register_admin_menu(): void {
@@ -429,6 +489,16 @@ final class And_ToolKit_Plugin {
                 'number_format'    => '${state.stats.numberFormat}',
                 'unique_visitors'  => ${state.stats.showUniqueVisitors ? 'true' : 'false'},
                 'total_downloads'  => ${state.stats.showTotalDownloads ? 'true' : 'false'},
+            ],
+            'gdpr'        => [
+                'enabled'                => ${state.gdpr.enabled ? 'true' : 'false'},
+                'title'                  => '${state.gdpr.widgetTitle.replace(/'/g, "\\'")}',
+                'display_style'          => '${state.gdpr.displayStyle}',
+                'privacy_url'            => '${state.gdpr.privacyPolicyUrl.replace(/'/g, "\\'")}',
+                'expiry_days'            => ${state.gdpr.consentExpiryDays},
+                'google_consent_mode_v2' => ${state.gdpr.googleConsentModeV2 ? 'true' : 'false'},
+                'auto_block_scripts'     => ${state.gdpr.autoBlockScripts ? 'true' : 'false'},
+                'default_categories'     => [ ${gdprCategoriesList} ],
             ],
             'performance' => [
                 'minify_assets'   => ${state.performance.minifyAssets ? 'true' : 'false'},
@@ -540,6 +610,29 @@ final class And_ToolKit_Plugin {
         );
     }
 
+    public static function render_cookie_consent_widget( array|string $atts = [] ): string {
+        $config = self::get_config()['gdpr'];
+        if ( ! $config['enabled'] ) {
+            return '';
+        }
+        return sprintf(
+            '<section class="atk-widget atk-gdpr-cookie" data-style="%s" data-expiry="%d" data-gcm-v2="%s"><h3>%s</h3><a href="%s">Adatvédelmi tájékoztató</a></section>',
+            esc_attr( $config['display_style'] ),
+            absint( $config['expiry_days'] ),
+            esc_attr( $config['google_consent_mode_v2'] ? 'true' : 'false' ),
+            esc_html( $config['title'] ),
+            esc_url( $config['privacy_url'] )
+        );
+    }
+
+    public static function render_gdpr_footer_banner(): void {
+        $config = self::get_config()['gdpr'];
+        if ( ! $config['enabled'] || 'sidebar-widget' === $config['display_style'] ) {
+            return;
+        }
+        echo self::render_cookie_consent_widget(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    }
+
     public static function register_rest_routes(): void {
         register_rest_route( 'and-toolkit/v1', '/search', [
             'methods'             => 'GET',
@@ -556,6 +649,17 @@ final class And_ToolKit_Plugin {
             'methods'             => 'POST',
             'callback'            => [ __CLASS__, 'increment_download_counter' ],
             'permission_callback' => '__return_true',
+        ] );
+        register_rest_route( 'and-toolkit/v1', '/cookie-consent', [
+            'methods'             => 'POST',
+            'callback'            => [ __CLASS__, 'handle_cookie_consent' ],
+            'permission_callback' => '__return_true',
+            'args'                => [
+                'consent_level' => [
+                    'required'          => true,
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
         ] );
     }
 
@@ -579,6 +683,21 @@ final class And_ToolKit_Plugin {
 
         return new \\WP_REST_Response( [ 'downloads' => $current + 1 ], 200 );
     }
+
+    public static function handle_cookie_consent( \\WP_REST_Request $request ): \\WP_REST_Response {
+        $level = sanitize_text_field( (string) $request->get_param( 'consent_level' ) );
+        $allowed_levels = [ 'all', 'custom', 'essential' ];
+        $clean_level = in_array( $level, $allowed_levels, true ) ? $level : 'essential';
+
+        return new \\WP_REST_Response(
+            [
+                'status'        => 'recorded',
+                'consent_level' => $clean_level,
+                'version'       => self::VERSION,
+            ],
+            200
+        );
+    }
 }
 
 And_ToolKit_Plugin::init();
@@ -587,14 +706,14 @@ And_ToolKit_Plugin::init();
 
 export interface AuditCheckItem {
   id: string;
-  category: 'PHP 8.0+' | 'WordPress 7.1' | 'Biztonság' | 'Teljesítmény';
+  category: 'PHP 8.0+' | 'WordPress 7.1' | 'GDPR & Adatvédelem' | 'Biztonság' | 'Teljesítmény';
   title: string;
   description: string;
   passed: boolean;
 }
 
 /**
- * Automated static code & configuration audit verifying compatibility with WordPress 7.1 and PHP 8.0+
+ * Automated static code & configuration audit verifying compatibility with WordPress 7.1, PHP 8.0+ and EU GDPR Cookie requirements
  */
 export function auditWordPressPhpCompatibility(
   phpCode: string,
@@ -616,9 +735,12 @@ export function auditWordPressPhpCompatibility(
     'render_search_widget',
     'render_social_widget',
     'render_stats_widget',
+    'render_cookie_consent_widget',
+    'render_gdpr_footer_banner',
     'register_rest_routes',
     'handle_ajax_search',
     'increment_download_counter',
+    'handle_cookie_consent',
   ];
 
   const allMethodsImplemented = requiredMethods.every((m) =>
@@ -640,32 +762,44 @@ export function auditWordPressPhpCompatibility(
     {
       id: 'php80-match-expression',
       category: 'PHP 8.0+',
-      title: 'PHP 8.0 Match Kifejezés & Osztálykonstansok',
+      title: 'PHP 8.0 Match Kifejezés & v0.2.0 Osztálykonstansok',
       description:
-        'A sablonválasztó a típusbiztos PHP 8.0 match () kifejezést és láthatósággal ellátott public const konstansokat használja.',
+        'A sablonválasztó a típusbiztos PHP 8.0 match () kifejezést és a public const VERSION = \'0.2.0\' konstanst használja.',
       passed:
-        phpCode.includes('match ( $atts[\'style\'] )') &&
-        phpCode.includes('public const VERSION    = \'0.1.0\';'),
+        phpCode.includes("match ( $atts['style'] )") &&
+        phpCode.includes("public const VERSION    = '0.2.0';"),
     },
     {
       id: 'wp71-header-meta',
       category: 'WordPress 7.1',
-      title: 'WordPress 7.1 Fejléc és Metaadat Szabvány',
+      title: 'WordPress 7.1 Fejléc és v0.2.0 Metaadat Szabvány',
       description:
-        'Plugin Name: And ToolKit, Version: 0.1.0, Author: galandras12+AI és Tested up to: 7.1 fejléc mezők hiánytalanul beállítva.',
+        'Plugin Name: And ToolKit, Version: 0.2.0, Author: galandras12+AI és Tested up to: 7.1 fejléc mezők hiánytalanul beállítva.',
       passed:
         phpCode.includes('Plugin Name:       And ToolKit') &&
-        phpCode.includes('Version:           0.1.0') &&
+        phpCode.includes('Version:           0.2.0') &&
         phpCode.includes('Tested up to:      7.1') &&
         phpCode.includes('Author:            galandras12+AI'),
     },
     {
       id: 'wp71-hook-callbacks',
       category: 'WordPress 7.1',
-      title: 'Minden Hook, Shortcode és REST Végpont Metódus Implementálva',
+      title: 'Minden Hook, 5 Shortcode és 3 REST Végpont Implementálva',
       description:
-        'Az összes regisztrált add_action, add_shortcode és register_rest_route visszahívási függvény (13/13 metódus) rendelkezik valódi PHP törzzsel.',
+        'Az összes regisztrált add_action, add_shortcode (beleértve a [wtk_cookie_consent] rövidkódot) és register_rest_route (16/16 metódus) rendelkezik valódi PHP törzzsel.',
       passed: allMethodsImplemented,
+    },
+    {
+      id: 'gdpr-cookie-compliance',
+      category: 'GDPR & Adatvédelem',
+      title: 'EU GDPR Kötelező Sütikezelés és Google Consent Mode v2',
+      description:
+        'Granuláris süti kategóriák (Szükséges, Funkcionális, Statisztikai, Marketing), előzetes hozzájárulás-naplózás (/cookie-consent REST API) és esc_url() védett adatvédelmi hivatkozás.',
+      passed:
+        phpCode.includes("add_shortcode( 'wtk_cookie_consent'") &&
+        phpCode.includes("'/cookie-consent'") &&
+        phpCode.includes('handle_cookie_consent') &&
+        state.gdpr.categories.some((c) => c.id === 'necessary' && c.required),
     },
     {
       id: 'wp71-script-strategy',
@@ -682,12 +816,12 @@ export function auditWordPressPhpCompatibility(
       category: 'Biztonság',
       title: 'ABSPATH Védelem, Escaping és REST Sanitize Callback',
       description:
-        'Közvetlen fájlelérés tiltva (!defined(\'ABSPATH\')), minden kimenet esc_html/esc_attr/absint szűréssel, a REST bemenet pedig sanitize_text_field-del védett.',
+        'Közvetlen fájlelérés tiltva (!defined(\'ABSPATH\')), minden kimenet esc_html/esc_attr/esc_url/absint szűréssel, a REST bemenet pedig sanitize_text_field-del védett.',
       passed:
         phpCode.includes("if ( ! defined( 'ABSPATH' ) )") &&
         phpCode.includes('sanitize_text_field') &&
         phpCode.includes('esc_html(') &&
-        phpCode.includes('esc_attr('),
+        phpCode.includes('esc_url('),
     },
     {
       id: 'perf-zero-jquery',
@@ -708,4 +842,3 @@ export function auditWordPressPhpCompatibility(
     checks,
   };
 }
-

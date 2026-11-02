@@ -6,6 +6,7 @@ export type ActiveTab =
   | 'search'
   | 'social'
   | 'stats'
+  | 'gdpr'
   | 'export';
 
 export type CalendarWidgetStyle = 'compact' | 'cards' | 'grid' | 'timeline';
@@ -128,6 +129,40 @@ export interface StatsConfig {
   history: DailyMetricPoint[];
 }
 
+export type GdprDisplayStyle = 'sidebar-widget' | 'bottom-bar' | 'floating-card' | 'modal-center';
+export type GdprCategoryId = 'necessary' | 'preferences' | 'analytics' | 'marketing';
+
+export interface GdprCategoryItem {
+  id: GdprCategoryId;
+  name: string;
+  description: string;
+  cookiesUsed: string;
+  required: boolean;
+  defaultEnabled: boolean;
+}
+
+export interface GdprConfig {
+  enabled: boolean;
+  widgetTitle: string;
+  description: string;
+  displayStyle: GdprDisplayStyle;
+  privacyPolicyUrl: string;
+  consentExpiryDays: number;
+  acceptAllLabel: string;
+  rejectLabel: string;
+  savePreferencesLabel: string;
+  googleConsentModeV2: boolean;
+  autoBlockScripts: boolean;
+  showCategoryDetails: boolean;
+  showReopenBadge: boolean;
+  categories: GdprCategoryItem[];
+  consentStats: {
+    acceptedAll: number;
+    customSelection: number;
+    essentialOnly: number;
+  };
+}
+
 export interface PerformanceConfig {
   minifyAssets: boolean;
   deferScripts: boolean;
@@ -144,6 +179,7 @@ export interface ToolkitState {
   search: SearchConfig;
   social: SocialConfig;
   stats: StatsConfig;
+  gdpr: GdprConfig;
   performance: PerformanceConfig;
   posts: ScheduledPostItem[];
 }

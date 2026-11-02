@@ -1,0 +1,6 @@
+{
+  "name": "WebToolKit — WordPress Plugin & Widget Studio",
+  "description": "Modern WordPress adminisztrációs bővítmény és oldalsáv widget-kezelő: Esemény naptár, testreszabható élő kereső, platformfüggetlen közösségi megosztó és valós idejű látogatói/letöltési statisztika modul.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

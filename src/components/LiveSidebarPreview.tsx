@@ -16,6 +16,7 @@ import {
   TrendingUp,
   Users,
   X,
+  Zap,
 } from 'lucide-react';
 import {
   GdprCategoryId,
@@ -38,6 +39,7 @@ interface LiveSidebarPreviewProps {
   onTriggerDownload: (postId: string) => void;
   onRecordGdprConsent: (type: 'all' | 'custom' | 'essential') => void;
   onBannerClick: () => void;
+  onRunQuickOptimize?: () => void;
 }
 
 const ACCENT_MAP = {
@@ -151,6 +153,7 @@ export const LiveSidebarPreview: React.FC<LiveSidebarPreviewProps> = ({
   onTriggerDownload,
   onRecordGdprConsent,
   onBannerClick,
+  onRunQuickOptimize,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
@@ -1191,6 +1194,65 @@ export const LiveSidebarPreview: React.FC<LiveSidebarPreviewProps> = ({
                   </div>
                 </>
               )}
+            </section>
+          )}
+
+          {/* 6. SPEED & MEDIA OPTIMIZER STATUS WIDGET ([wtk_speed_badge] · v0.4.0) */}
+          {state.optimizer.enabled && state.optimizer.showSidebarSpeedBadge && (
+            <section
+              aria-label="Optimalizáló Sebesség Jelvény Előnézet"
+              className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-2.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Optimalizáló &amp; Lazy Load Állapot
+                  </h3>
+                </div>
+                <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+                  [wtk_speed_badge]
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 rounded bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                  <div className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    {state.optimizer.speedMetrics.pageSpeedScore}/100
+                  </div>
+                  <div className="text-[10px] text-slate-500">PageSpeed</div>
+                </div>
+                <div className="p-2 rounded bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                  <div className="text-xs font-mono font-bold text-slate-900 dark:text-slate-100">
+                    {state.optimizer.convertFormat.toUpperCase()}
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    {state.optimizer.compressionQuality}% tömörítés
+                  </div>
+                </div>
+                <div className="p-2 rounded bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                  <div className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
+                    {state.optimizer.customUploadLimitMb} MB
+                  </div>
+                  <div className="text-[10px] text-slate-500">WP Upload</div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+                <span className="font-mono">
+                  TTFB: {state.optimizer.speedMetrics.ttfbMs}ms · Lazy Load:{' '}
+                  {state.optimizer.lazyLoadImages ? 'Aktív' : 'Inaktív'}
+                </span>
+                {onRunQuickOptimize && (
+                  <button
+                    type="button"
+                    onClick={onRunQuickOptimize}
+                    className="font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    Sebességmérés →
+                  </button>
+                )}
+              </div>
             </section>
           )}
         </div>

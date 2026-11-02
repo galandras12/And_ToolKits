@@ -4,6 +4,7 @@ import {
   INITIAL_POSTS,
   INITIAL_STATE,
   auditWordPressPhpCompatibility,
+  calculateMediaQueueSummary,
   calculatePerformanceMetrics,
   formatMetricValue,
   generateWordPressPluginPhp,
@@ -49,7 +50,7 @@ test('formatMetricValue formats compact, comma, and exact space-separated number
 });
 
 test('calculatePerformanceMetrics rewards zero-jQuery and minification', () => {
-  const fast = calculatePerformanceMetrics(INITIAL_STATE.performance, 5);
+  const fast = calculatePerformanceMetrics(INITIAL_STATE.performance, 7);
   const slow = calculatePerformanceMetrics(
     {
       minifyAssets: false,
@@ -58,10 +59,17 @@ test('calculatePerformanceMetrics rewards zero-jQuery and minification', () => {
       objectCacheTtlMinutes: 0,
       zeroJqueryDependency: false,
     },
-    5
+    7
   );
   assert.equal(fast.bundleSizeKb < slow.bundleSizeKb, true);
   assert.equal(fast.lighthouseScore > slow.lighthouseScore, true);
+});
+
+test('calculateMediaQueueSummary computes image compression savings accurately', () => {
+  const summary = calculateMediaQueueSummary(INITIAL_STATE.optimizer.mediaQueue);
+  assert.equal(summary.totalOriginalKb > summary.totalOptimizedKb, true);
+  assert.equal(summary.savingsPercent > 75, true);
+  assert.equal(summary.pendingCount, 2);
 });
 
 test('validateNewPostInput enforces required fields', () => {
@@ -75,19 +83,21 @@ test('validateNewPostInput enforces required fields', () => {
   );
 });
 
-test('generateWordPressPluginPhp and auditWordPressPhpCompatibility pass all v0.3.0 WordPress 7.1, PHP 8.0, GDPR & Info Banner checks', () => {
+test('generateWordPressPluginPhp and auditWordPressPhpCompatibility pass all v0.4.0 WordPress 7.1, PHP 8.0, GDPR, Banner & Optimizer checks', () => {
   const php = generateWordPressPluginPhp(INITIAL_STATE);
   assert.equal(php.includes('Plugin Name:       And ToolKit'), true);
-  assert.equal(php.includes('Version:           0.3.0'), true);
+  assert.equal(php.includes('Version:           0.4.0'), true);
   assert.equal(php.includes('Tested up to:      7.1'), true);
   assert.equal(php.includes('Requires PHP:      8.0'), true);
   assert.equal(php.includes('Author:            galandras12+AI'), true);
   assert.equal(php.includes('declare(strict_types=1);'), true);
-  assert.equal(php.includes("add_shortcode( 'wtk_cookie_consent'"), true);
-  assert.equal(php.includes("add_shortcode( 'wtk_info_banner'"), true);
+  assert.equal(php.includes("add_filter( 'upload_size_limit'"), true);
+  assert.equal(php.includes("add_filter( 'big_image_size_threshold'"), true);
+  assert.equal(php.includes("add_filter( 'wp_get_attachment_image_attributes'"), true);
 
   const audit = auditWordPressPhpCompatibility(php, INITIAL_STATE);
   assert.equal(audit.allPassed, true);
-  assert.equal(audit.passedCount, 9);
+  assert.equal(audit.passedCount, 10);
 });
+
 

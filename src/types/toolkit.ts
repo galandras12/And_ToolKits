@@ -8,6 +8,7 @@ export type ActiveTab =
   | 'stats'
   | 'gdpr'
   | 'banner'
+  | 'optimizer'
   | 'export';
 
 export type CalendarWidgetStyle = 'compact' | 'cards' | 'grid' | 'timeline';
@@ -197,6 +198,68 @@ export interface BannerConfig {
   clicks: number;
 }
 
+export type ImageTargetFormat = 'webp' | 'avif' | 'original';
+export type LazyPlaceholderStyle = 'blurhash' | 'dominant-color' | 'shimmer-skeleton' | 'none';
+export type AutoOptimizeSchedule = 'realtime-upload' | 'hourly-cron' | 'daily-cron' | 'manual-only';
+
+export interface MediaOptimizationItem {
+  id: string;
+  fileName: string;
+  originalFormat: 'JPG' | 'PNG';
+  targetFormat: 'WebP' | 'AVIF' | 'JPG';
+  originalDimensions: string;
+  resizedDimensions: string;
+  originalSizeKb: number;
+  optimizedSizeKb: number;
+  status: 'optimized' | 'pending';
+}
+
+export interface OptimizerConfig {
+  enabled: boolean;
+  showSidebarSpeedBadge: boolean;
+  // 1. Automatic vs Manual Mode
+  autoOptimizeEnabled: boolean;
+  autoSchedule: AutoOptimizeSchedule;
+  lastOptimizedAt: string;
+  totalOptimizationRuns: number;
+  // 2. Image Compression, Format Conversion & Resizing
+  imageCompressionEnabled: boolean;
+  compressionQuality: number; // 40 - 98
+  convertFormat: ImageTargetFormat;
+  autoResizeEnabled: boolean;
+  maxWidthPx: number;
+  maxHeightPx: number;
+  stripExifMetadata: boolean;
+  keepOriginalBackup: boolean;
+  mediaQueue: MediaOptimizationItem[];
+  // 3. WordPress File Upload Limit Override
+  overrideUploadLimit: boolean;
+  defaultWpUploadLimitMb: number;
+  customUploadLimitMb: number;
+  maxExecutionTimeSec: number;
+  allowSvgAndAvifUpload: boolean;
+  // 4. Comprehensive Lazy Loading
+  lazyLoadImages: boolean;
+  lazyLoadIframesAndVideos: boolean;
+  lazyLoadBackgrounds: boolean;
+  excludeAboveFoldCount: number;
+  fetchPriorityHighOnLcp: boolean;
+  lazyPlaceholder: LazyPlaceholderStyle;
+  // 5. Cache Management & Speed Measurement
+  pageCacheEnabled: boolean;
+  browserCacheTtlHours: number;
+  gzipBrotliEnabled: boolean;
+  currentCacheSizeMb: number;
+  lastCachePurgedAt: string;
+  speedMetrics: {
+    ttfbMs: number;
+    lcpMs: number;
+    clsScore: string;
+    pageSpeedScore: number;
+    totalSavedMb: number;
+  };
+}
+
 export interface PerformanceConfig {
   minifyAssets: boolean;
   deferScripts: boolean;
@@ -215,7 +278,9 @@ export interface ToolkitState {
   stats: StatsConfig;
   gdpr: GdprConfig;
   banner: BannerConfig;
+  optimizer: OptimizerConfig;
   performance: PerformanceConfig;
   posts: ScheduledPostItem[];
 }
+
 

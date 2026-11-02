@@ -12,6 +12,7 @@ import {
   Share2,
   ShieldCheck,
   Sun,
+  Zap,
 } from 'lucide-react';
 import {
   ActiveTab,
@@ -19,6 +20,8 @@ import {
   CalendarConfig,
   GdprCategoryId,
   GdprConfig,
+  MediaOptimizationItem,
+  OptimizerConfig,
   PerformanceConfig,
   ScheduledPostItem,
   SearchConfig,
@@ -35,10 +38,11 @@ import { SocialModulePanel } from './components/SocialModulePanel';
 import { StatsModulePanel } from './components/StatsModulePanel';
 import { GdprCookieModulePanel } from './components/GdprCookieModulePanel';
 import { InfoBannerModulePanel } from './components/InfoBannerModulePanel';
+import { OptimizerModulePanel } from './components/OptimizerModulePanel';
 import { OverviewAndExportPanel } from './components/OverviewAndExportPanel';
 import { AndWrenchLogo } from './components/AndWrenchLogo';
 
-const STORAGE_KEY = 'and_toolkit_wp_state_v030';
+const STORAGE_KEY = 'and_toolkit_wp_state_v040';
 
 export default function App() {
   const [state, setState] = useState<ToolkitState>(() => {
@@ -129,6 +133,13 @@ export default function App() {
     }));
   };
 
+  const updateOptimizer = (patch: Partial<OptimizerConfig>) => {
+    setState((prev) => ({
+      ...prev,
+      optimizer: { ...prev.optimizer, ...patch },
+    }));
+  };
+
   const updatePerformance = (patch: Partial<PerformanceConfig>) => {
     setState((prev) => ({
       ...prev,
@@ -137,13 +148,149 @@ export default function App() {
   };
 
   const handleToggleModule = (
-    module: 'calendar' | 'search' | 'social' | 'stats' | 'gdpr' | 'banner',
+    module:
+      | 'calendar'
+      | 'search'
+      | 'social'
+      | 'stats'
+      | 'gdpr'
+      | 'banner'
+      | 'optimizer',
     enabled: boolean
   ) => {
     setState((prev) => ({
       ...prev,
       [module]: { ...prev[module], enabled },
     }));
+  };
+
+  const handleRunInteractiveOptimization = () => {
+    setState((prev) => {
+      const targetFormat = prev.optimizer.targetFormat;
+      const compressionRatio = Math.max(
+        0.18,
+        (100 - prev.optimizer.compressionQuality) / 100 +
+          (targetFormat === 'avif' ? 0.48 : targetFormat === 'webp' ? 0.38 : 0.15)
+      );
+
+      const updatedQueue = prev.optimizer.mediaQueue.map((item) => {
+        if (item.status === 'optimized') {
+          return item;
+        }
+        const newSize = Math.max(
+          24,
+          Math.round(item.originalSizeKb * (1 - Math.min(0.84, compressionRatio)))
+        );
+        const newFormat =
+          targetFormat === 'avif'
+            ? 'AVIF'
+            : targetFormat === 'webp'
+            ? 'WebP'
+            : item.originalFormat;
+        const resizedDims = prev.optimizer.resizeEnabled
+          ? `${Math.min(prev.optimizer.maxWidthPx, 1920)}×${Math.min(
+              prev.optimizer.maxHeightPx,
+              1080
+            )}`
+          : item.dimensions;
+
+        return {
+          ...item,
+          optimizedSizeKb: newSize,
+          outputFormat: newFormat,
+          dimensions: resizedDims,
+          status: 'optimized' as const,
+        };
+      });
+
+      const nowStr = new Date().toISOString().slice(0, 16).replace('T', ' ');
+      return {
+        ...prev,
+        optimizer: {
+          ...prev.optimizer,
+          mediaQueue: updatedQueue,
+          lastBenchmarkAt: nowStr,
+          optimizationRunsCount: prev.optimizer.optimizationRunsCount + 1,
+          measuredTtfbMs: Math.max(24, prev.optimizer.measuredTtfbMs - 6),
+          measuredLcpMs: Math.max(520, prev.optimizer.measuredLcpMs - 70),
+          measuredPageSpeedScore: Math.min(
+            100,
+            prev.optimizer.measuredPageSpeedScore + 1
+          ),
+        },
+      };
+    });
+    triggerSaveFeedback(
+      'Kézi Optimalizálás & Sebességmérés lefutott: Képek tömörítve, Lazy Load & Gyorsítótár frissítve!'
+    );
+  };
+
+  const handlePurgeCache = () => {
+    const nowStr = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    setState((prev) => ({
+      ...prev,
+      optimizer: {
+        ...prev.optimizer,
+        cachedPagesCount: 0,
+        cacheSizeMb: 0,
+        lastCachePurge: nowStr,
+      },
+    }));
+    triggerSaveFeedback('WordPress Gyorsítótár (Page + Object Cache) sikeresen ürítve!');
+  };
+
+  const handleOptimizeSingleImage = (id: string) => {
+    setState((prev) => {
+      const targetFormat = prev.optimizer.targetFormat;
+      const updatedQueue = prev.optimizer.mediaQueue.map((item) => {
+        if (item.id !== id) return item;
+        const newFormat =
+          targetFormat === 'avif'
+            ? 'AVIF'
+            : targetFormat === 'webp'
+            ? 'WebP'
+            : item.originalFormat;
+        const factor =
+          targetFormat === 'avif' ? 0.24 : targetFormat === 'webp' ? 0.32 : 0.65;
+        const newSize = Math.max(22, Math.round(item.originalSizeKb * factor));
+        const resizedDims = prev.optimizer.resizeEnabled
+          ? `${Math.min(prev.optimizer.maxWidthPx, 1920)}×${Math.min(
+              prev.optimizer.maxHeightPx,
+              1080
+            )}`
+          : item.dimensions;
+        return {
+          ...item,
+          optimizedSizeKb: newSize,
+          outputFormat: newFormat,
+          dimensions: resizedDims,
+          status: 'optimized' as const,
+        };
+      });
+      return {
+        ...prev,
+        optimizer: {
+          ...prev.optimizer,
+          mediaQueue: updatedQueue,
+        },
+      };
+    });
+    triggerSaveFeedback('Kép egyedileg tömörítve, átméretezve és konvertálva!');
+  };
+
+  const handleAddSampleImage = (item: MediaOptimizationItem) => {
+    setState((prev) => ({
+      ...prev,
+      optimizer: {
+        ...prev.optimizer,
+        mediaQueue: [item, ...prev.optimizer.mediaQueue],
+      },
+    }));
+    triggerSaveFeedback(
+      item.status === 'optimized'
+        ? 'Médiafájl feltöltve és automatikusan optimalizálva (valós idejű hook)!'
+        : 'Médiafájl hozzáadva az optimalizálási várólistához!'
+    );
   };
 
   const handleSimulateBannerClick = () => {
@@ -282,7 +429,7 @@ export default function App() {
 
   const handleResetAll = () => {
     setState(INITIAL_STATE);
-    triggerSaveFeedback('Alapértelmezett And ToolKit v0.3.0 beállítások visszaállítva');
+    triggerSaveFeedback('Alapértelmezett And ToolKit v0.4.0 beállítások visszaállítva');
   };
 
   const activeModulesCount = [
@@ -292,6 +439,7 @@ export default function App() {
     state.stats.enabled,
     state.gdpr.enabled,
     state.banner.enabled,
+    state.optimizer.enabled,
   ].filter(Boolean).length;
 
   const perf = calculatePerformanceMetrics(state.performance, activeModulesCount);
@@ -299,7 +447,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       {/* Strict 3-Zone Top Navigation Bar */}
-      <header className="flex items-center justify-between gap-8 px-6 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+      <header className="flex items-center justify-between gap-6 px-6 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
         {/* Zone 1: Brand with custom '& in a wrench' logo */}
         <a
           href="#overview"
@@ -316,7 +464,7 @@ export default function App() {
         {/* Zone 2: Concise single-line text navigation links */}
         <nav
           aria-label="Fő navigáció"
-          className="hidden md:flex items-center gap-5 text-sm font-medium text-slate-600 dark:text-slate-400"
+          className="hidden md:flex items-center gap-4 text-sm font-medium text-slate-600 dark:text-slate-400"
         >
           <a
             href="#overview"
@@ -344,7 +492,7 @@ export default function App() {
                 : 'border-transparent hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            Esemény Naptár
+            Naptár
           </a>
           <a
             href="#search"
@@ -358,7 +506,7 @@ export default function App() {
                 : 'border-transparent hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            Keresőmotor
+            Kereső
           </a>
           <a
             href="#social"
@@ -372,7 +520,7 @@ export default function App() {
                 : 'border-transparent hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            Közösségi Megosztás
+            Megosztás
           </a>
           <a
             href="#stats"
@@ -416,6 +564,20 @@ export default function App() {
           >
             Info Banner
           </a>
+          <a
+            href="#optimizer"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveTab('optimizer');
+            }}
+            className={`py-1 transition-colors whitespace-nowrap shrink-0 border-b-2 ${
+              activeTab === 'optimizer'
+                ? 'border-blue-600 text-slate-900 dark:text-slate-100 font-semibold'
+                : 'border-transparent hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            Optimalizáló
+          </a>
         </nav>
 
         {/* Zone 3: 1 Primary Action */}
@@ -443,14 +605,14 @@ export default function App() {
               And ToolKit
             </span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono tabular-nums">Verzió: 0.3.0</span>
+            <span className="font-mono tabular-nums">Verzió: 0.4.0</span>
             <span aria-hidden="true">·</span>
             <span>
               Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong>
             </span>
             <span aria-hidden="true">·</span>
             <span className="font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-              {activeModulesCount}/6 modul · Betöltés: {perf.estimatedLoadMs}ms ({perf.bundleSizeKb} KB)
+              {activeModulesCount}/7 modul · Betöltés: {perf.estimatedLoadMs}ms ({perf.bundleSizeKb} KB)
             </span>
           </div>
 
@@ -523,6 +685,7 @@ export default function App() {
             { id: 'stats' as const, label: 'Statisztika', icon: BarChart3 },
             { id: 'gdpr' as const, label: 'GDPR Cookie', icon: ShieldCheck },
             { id: 'banner' as const, label: 'Info Banner', icon: Megaphone },
+            { id: 'optimizer' as const, label: 'Optimalizáló', icon: Zap },
             { id: 'export' as const, label: 'PHP Kód', icon: Code2 },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -614,6 +777,17 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'optimizer' && (
+              <OptimizerModulePanel
+                config={state.optimizer}
+                onUpdateConfig={updateOptimizer}
+                onRunInteractiveOptimization={handleRunInteractiveOptimization}
+                onPurgeCache={handlePurgeCache}
+                onOptimizeSingleImage={handleOptimizeSingleImage}
+                onAddSampleImage={handleAddSampleImage}
+              />
+            )}
+
             {activeTab === 'export' && (
               <OverviewAndExportPanel
                 mode="export"
@@ -636,6 +810,7 @@ export default function App() {
               onTriggerDownload={handleTriggerDownload}
               onRecordGdprConsent={handleRecordGdprConsent}
               onBannerClick={handleSimulateBannerClick}
+              onRunQuickOptimize={handleRunInteractiveOptimization}
             />
           </div>
         </div>
@@ -645,7 +820,7 @@ export default function App() {
       <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4">
         <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
           <span>
-            And ToolKit v0.3.0 · Készítő: galandras12+AI · Auditálva: WordPress 7.1, PHP 8.0+ &amp; EU GDPR
+            And ToolKit v0.4.0 · Készítő: galandras12+AI · Auditálva: WordPress 7.1, PHP 8.0+ &amp; EU GDPR
           </span>
           <div className="flex items-center gap-4">
             <button

@@ -12,6 +12,7 @@ import {
   Share2,
   ShieldCheck,
   Sliders,
+  Zap,
 } from 'lucide-react';
 import {
   ActiveTab,
@@ -31,7 +32,7 @@ interface OverviewAndExportPanelProps {
   state: ToolkitState;
   onNavigateTab: (tab: ActiveTab) => void;
   onToggleModule: (
-    module: 'calendar' | 'search' | 'social' | 'stats' | 'gdpr' | 'banner',
+    module: 'calendar' | 'search' | 'social' | 'stats' | 'gdpr' | 'banner' | 'optimizer',
     enabled: boolean
   ) => void;
   onUpdatePerformance: (patch: Partial<PerformanceConfig>) => void;
@@ -53,6 +54,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
     state.stats.enabled,
     state.gdpr.enabled,
     state.banner.enabled,
+    state.optimizer.enabled,
   ].filter(Boolean).length;
 
   const perfMetrics = calculatePerformanceMetrics(state.performance, activeCount);
@@ -87,10 +89,10 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             <AndWrenchLogo size="lg" />
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                And ToolKit v0.3.0 — WordPress 7.1 &amp; PHP 8.0+ Forráskód (and-toolkit.php)
+                And ToolKit v0.4.0 — WordPress 7.1 &amp; PHP 8.0+ Forráskód (and-toolkit.php)
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong> · Verzió: <span className="font-mono">0.3.0</span> · Célkörnyezet: <span className="font-mono">WordPress 7.1 / PHP 8.0+ / EU GDPR &amp; Info Banner</span>
+                Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong> · Verzió: <span className="font-mono">0.4.0</span> · Célkörnyezet: <span className="font-mono">WordPress 7.1 / PHP 8.0+ / GDPR / Info Banner &amp; Optimalizáló</span>
               </p>
             </div>
           </div>
@@ -130,7 +132,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                WordPress 7.1, PHP 8.0, EU GDPR &amp; Info Banner Kompatibilitási Audit Jelentés (v0.3.0)
+                WordPress 7.1, PHP 8.0, EU GDPR, Info Banner &amp; Optimalizáló Audit Jelentés (v0.4.0)
               </h3>
             </div>
             <span className="text-xs font-mono font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
@@ -167,7 +169,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
         <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
           <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Regisztrált WordPress 7.1 Rövidkódok (6 Shortcode) és REST Végpontok
+              Regisztrált WordPress 7.1 Rövidkódok (7 Shortcode), Filterek és REST Végpontok
             </h3>
           </div>
           <div className="overflow-x-auto">
@@ -265,6 +267,20 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                     Action: wp_body_open / is_front_page()
                   </td>
                 </tr>
+                <tr>
+                  <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-slate-100">
+                    07. Kép-, Upload Limit-, Lazy Load &amp; Cache Optimalizáló (v0.4.0)
+                  </td>
+                  <td className="py-2.5 px-3 font-mono text-blue-600 dark:text-blue-400">
+                    [wtk_speed_badge]
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
+                    {state.optimizer.convertFormat.toUpperCase()} ({state.optimizer.compressionQuality}%) · {state.optimizer.customUploadLimitMb} MB Limit
+                  </td>
+                  <td className="py-2.5 px-4 font-mono text-slate-500">
+                    Filter: upload_size_limit, big_image_size_threshold
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -280,14 +296,14 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                GitHub Közzététel Előkészítve (v0.3.0 Release)
+                GitHub Közzététel Előkészítve (v0.4.0 Release)
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                A gyökérkönyvtárban az önálló <code className="font-mono">/and-toolkit.php</code> és a látványos <code className="font-mono">/README.md</code> frissítve a <code className="font-mono">0.3.0</code> Információs Banner modullal és a Google AI Studio (Gemini 4 Argon) megjelöléssel.
+                A gyökérkönyvtárban az önálló <code className="font-mono">/and-toolkit.php</code> és a látványos <code className="font-mono">/README.md</code> frissítve a <code className="font-mono">0.4.0</code> Kép-, Upload Limit-, Lazy Load &amp; Cache Optimalizáló modullal.
               </p>
             </div>
             <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-              Git: main · tag: v0.3.0
+              Git: main · tag: v0.4.0
             </span>
           </div>
           <div className="p-3 rounded-md bg-slate-950 text-slate-200 text-xs font-mono overflow-x-auto space-y-1">
@@ -303,7 +319,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
   // OVERVIEW MODE
   return (
     <div className="space-y-6">
-      {/* Overview Header with Custom Wrench-& Logo, Version 0.3.0 & Author galandras12+AI */}
+      {/* Overview Header with Custom Wrench-& Logo, Version 0.4.0 & Author galandras12+AI */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-start sm:items-center gap-3.5">
           <AndWrenchLogo size="lg" />
@@ -313,14 +329,14 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             </h2>
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-                Verzió: 0.3.0
+                Verzió: 0.4.0
               </span>
               <span aria-hidden="true">·</span>
               <span>
                 Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong>
               </span>
               <span aria-hidden="true">·</span>
-              <span>WordPress 7.1 Admin, GDPR &amp; Info Banner Eszköztár</span>
+              <span>WordPress 7.1 Admin, GDPR, Info Banner &amp; Optimalizáló</span>
             </div>
           </div>
         </div>
@@ -549,7 +565,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           </div>
         </div>
 
-        {/* Module 6: Persistent Customizable Info Banner (New in v0.3.0) */}
+        {/* Module 6: Persistent Customizable Info Banner */}
         <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -559,7 +575,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    06. Állandó Információs Banner (ÚJ · v0.3.0)
+                    06. Állandó Információs Banner (v0.3.0)
                   </h3>
                   <div className="text-xs text-slate-500">
                     {state.banner.visibilityScope === 'homepage-only' ? 'Csak Főoldal' : 'Minden Oldal'} · {state.banner.colorPreset} · {state.banner.animation}
@@ -587,6 +603,50 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             >
               <Sliders className="w-3.5 h-3.5" />
               <span>Banner szín, betű és animáció</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Module 7: Dedicated Media, Upload Limit, Lazy Load & Speed Optimizer (New in v0.4.0) */}
+        <div className="md:col-span-2 p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-md bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    07. Kép-, Upload Limit-, Lazy Load és Gyorsítótár Optimalizáló (ÚJ · v0.4.0)
+                  </h3>
+                  <div className="text-xs text-slate-500 font-mono">
+                    {state.optimizer.convertFormat.toUpperCase()} ({state.optimizer.compressionQuality}%) · Max {state.optimizer.maxWidthPx}×{state.optimizer.maxHeightPx}px · WP Upload Limit: {state.optimizer.customUploadLimitMb} MB · TTFB: {state.optimizer.speedMetrics.ttfbMs}ms
+                  </div>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                aria-label="Optimalizáló modul engedélyezése"
+                checked={state.optimizer.enabled}
+                onChange={(e) => onToggleModule('optimizer', e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer"
+              />
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Dedikált optimalizáló központ: opcionális képtömörítés, WebP/AVIF konvertálás és átméretezés, a WordPress alapértelmezett fájlfeltöltési korlátjának felülbírálása ({state.optimizer.defaultWpUploadLimitMb} MB → {state.optimizer.customUploadLimitMb} MB), teljes körű Lazy Loading (képek, iframe, háttérképek) és kézi vagy automatikus gyorsítótár-/sebességoptimalizálás.
+            </p>
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span className="text-[11px] font-mono text-slate-400">
+              [wtk_speed_badge] · upload_size_limit · big_image_size_threshold
+            </span>
+            <button
+              type="button"
+              onClick={() => onNavigateTab('optimizer')}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Optimalizáló és Sebességmérő megnyitása</span>
             </button>
           </div>
         </div>
@@ -693,7 +753,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              WordPress 7.1, PHP 8.0+, EU GDPR &amp; Info Banner Rendszeraudit (v0.3.0)
+              WordPress 7.1, PHP 8.0+, EU GDPR, Info Banner &amp; Optimalizáló Audit (v0.4.0)
             </h3>
           </div>
           <div className="flex items-center gap-3 text-xs">

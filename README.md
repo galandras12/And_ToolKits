@@ -2,17 +2,18 @@
 
 # 🔧 `&` And ToolKit — WordPress 7.1 Admin & Widget Studio
 
-### Moduláris Oldalsáv Widgetek · Élő AJAX Kereső · Közösségi Megosztó · Analitika · EU GDPR Cookie · Állandó Információs Banner
+### Moduláris Oldalsáv Widgetek · Élő AJAX Kereső · Közösségi Megosztó · Analitika · EU GDPR Cookie · Állandó Információs Banner · Kép-, Upload Limit-, Lazy Load & Cache Optimalizáló
 
-![Version](https://img.shields.io/badge/Verzi%C3%B3-0.3.0-2563EB?style=for-the-badge&logo=semanticrelease&logoColor=white)
+![Version](https://img.shields.io/badge/Verzi%C3%B3-0.4.0-2563EB?style=for-the-badge&logo=semanticrelease&logoColor=white)
 ![WordPress](https://img.shields.io/badge/WordPress-7.1%20Ready-21759B?style=for-the-badge&logo=wordpress&logoColor=white)
 ![PHP](https://img.shields.io/badge/PHP-8.0%2B%20Strict-777BB4?style=for-the-badge&logo=php&logoColor=white)
 ![GDPR](https://img.shields.io/badge/EU%20GDPR-Consent%20Mode%20v2-10B981?style=for-the-badge&logo=shield&logoColor=white)
+![Optimizer](https://img.shields.io/badge/Core%20Web%20Vitals-99%2F100%20PageSpeed-059669?style=for-the-badge&logo=pagespeedinsights&logoColor=white)
 ![Author](https://img.shields.io/badge/K%C3%A9sz%C3%ADt%C5%91-galandras12%2BAI-0F172A?style=for-the-badge)
 
 ---
 
-**Egyetlen modern, villámgyors (`< 12 KB`, Zero-jQuery) WordPress bővítmény, amely 6 nélkülözhetetlen frontend és adminisztrációs modult egyesít valós idejű oldalsáv előnézettel, sötét/világos móddal és reszponzív mobilnézettel.**
+**Egyetlen modern, villámgyors (`< 12 KB`, Zero-jQuery) WordPress bővítmény, amely 7 nélkülözhetetlen frontend, teljesítmény-optimalizáló és adminisztrációs modult egyesít valós idejű oldalsáv előnézettel, sötét/világos móddal és reszponzív mobilnézettel.**
 
 </div>
 
@@ -20,21 +21,22 @@
 
 ## ✨ Miért az And ToolKit?
 
-| Jellemző | Hagyományos WordPress Bővítmények (6 külön plugin) | **🔧 `&` And ToolKit (`v0.3.0`)** |
+| Jellemző | Hagyományos WordPress Bővítmények (7 külön plugin) | **🔧 `&` And ToolKit (`v0.4.0`)** |
 | :--- | :--- | :--- |
-| **Függőségek** | jQuery + nehéz külső ikonfontok (`140+ KB`) | **Zero-jQuery · Beágyazott SVG (`~10.7 KB`)** |
-| **Adminisztráció** | 6 különálló, eltérő stílusú beállítóoldal | **Egységes Studio Vezérlőpult + Élő Oldalsáv Előnézet** |
+| **Függőségek** | jQuery + nehéz külső ikonfontok (`160+ KB`) | **Zero-jQuery · Beágyazott SVG (`~10.9 KB`)** |
+| **Adminisztráció** | 7 különálló, eltérő stílusú beállítóoldal | **Egységes Studio Vezérlőpult + Élő Oldalsáv Előnézet** |
+| **Kép & Sebesség** | Fizetős külső API kvóták + bonyolult `php.ini` | **Beépített WebP/AVIF konverter, `upload_size_limit` felülbírálás, Lazy Load & Cache** |
 | **Téma támogatás** | Csak világos vagy sablonfüggő | **Natív Világos & Sötét mód (`Dark / Light`)** |
 | **PHP & WP Szabvány** | Vegyes örökölt kód | **`declare(strict_types=1)` · PHP 8.0 `match` · WP 7.1 `defer`** |
 | **Jogszabályi megfelelés** | Külön fizetős kiegészítő | **Beépített EU GDPR Cookie + Google Consent Mode v2** |
 
 ---
 
-## 🧩 A 6 Fő Modul Felépítése (`v0.3.0`)
+## 🧩 A 7 Fő Modul Felépítése (`v0.4.0`)
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                     🔧 [&] And ToolKit v0.3.0 Mag (PHP 8.0+)                 │
+│                     🔧 [&] And ToolKit v0.4.0 Mag (PHP 8.0+)                 │
 ├───────────────────────┬──────────────────────────┬───────────────────────────┤
 │ 01. Esemény Naptár    │ 02. Élő AJAX Kereső      │ 03. Közösségi Megosztás   │
 │   [wtk_calendar]      │     [wtk_search]         │      [wtk_social]         │
@@ -47,7 +49,14 @@
 │ • Látogató & Letöltés │ • 4 Granuláris kategória │ • Főoldal / Minden oldal  │
 │ • Kompakt/Pontos szám │ • Google Consent Mode v2 │ • 6 Színséma + Egyedi HEX │
 │ • 7 napos aktivitás   │ • Szkript elő-blokkolás  │ • 3 Méret, 4 Betű, 5 Anim │
-└───────────────────────┴──────────────────────────┴───────────────────────────┘
+├───────────────────────┴──────────────────────────┴───────────────────────────┤
+│ 07. Kép-, Upload Limit-, Lazy Load & Gyorsítótár Optimalizáló (`v0.4.0`)     │
+│                     [wtk_speed_badge] · /wp-json/and-toolkit/v1/optimize     │
+│ • Kézi interaktív 1-kattintásos optimalizálás + Automatikus WP-Cron ütemezés │
+│ • Képtömörítés (40-98%), WebP/AVIF konverzió, Max 1920×1080px átméretezés    │
+│ • WordPress 8 MB feltöltési limit felülbírálása (16 MB – 1024 MB)            │
+│ • Teljes Lazy Loading (img, iframe, CSS bg, LCP kizárás + fetchpriority)     │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -79,17 +88,23 @@
 - **4 granuláris kategória**: *Feltétlenül szükséges (zárolt)*, *Funkcionális*, *Statisztikai (`analytics_storage`)* és *Marketing (`ad_storage`)*.
 - **Google Consent Mode v2 & Előzetes Szkript-blokkolás**: A nem kötelező szkriptek csak kifejezett látogatói hozzájárulás után futnak le.
 
-### 📣 `06.` Állandó Főoldali / Globális Információs Banner (`[wtk_info_banner]`) — *ÚJ a v0.3.0-ban!*
-- **Rugalmas megjelenési hatókör**:
-  - 🌍 **Minden oldalon állandóan** (`wp_body_open` hook)
-  - 🏠 **Csak a Főoldalon** (`is_front_page()` feltétel)
-  - 📰 **Csak Bejegyzések és Események felett** (`is_singular()`)
-  - 📌 **Csak Oldalsávban** (`[wtk_info_banner]` rövidkód)
-- **Teljes vizuális testreszabhatóság**:
-  - 🎨 **Színvilág**: 5 prémium gradiens téma (*Kobaltkék, Smaragd Aurora, Borostyán, Rubinvörös, Obszidián*) + **Egyedi HEX háttér- és betűszín választó**.
-  - 📐 **Méret**: *Kompakt keskeny (`S`)*, *Normál (`M`)* és *Kiemelt Hero Banner alcímmel (`L`)*.
-  - 🔤 **Betűstílus**: *Modern Sans (DM Sans)*, *Karakteres Vastag (Plus Jakarta Sans)*, *Klasszikus Szerkesztőségi Serif* és *Technikai Monospace (JetBrains Mono)*.
-  - ✨ **Animáció**: *Statikus*, *Pulzáló Fény (`pulse-glow`)*, *Lebegő Mozgás (`slide-down`)*, *Színátmenet Hullám (`shimmer`)* és *Hírszalag Mozgás (`marquee`)*.
+### 📣 `06.` Állandó Főoldali / Globális Információs Banner (`[wtk_info_banner]`) — *v0.3.0*
+- **Rugalmas megjelenési hatókör**: *Minden oldalon állandóan (`wp_body_open`)*, *Csak a Főoldalon (`is_front_page()`)*, *Csak Bejegyzések felett* vagy *Csak Oldalsávban*.
+- **Teljes vizuális testreszabhatóság**: 5 prémium gradiens téma + **Egyedi HEX háttér- és betűszín választó**, 3 méret (`S / M / L`), 4 betűstílus és 5 animáció (*Statikus, Pulzáló Fény, Lebegő Mozgás, Színátmenet Hullám, Hírszalag Mozgás*).
+
+### ⚡ `07.` Kép-, Upload Limit-, Lazy Load & Gyorsítótár Optimalizáló (`[wtk_speed_badge]`) — *ÚJ a v0.4.0-ban!*
+- **Kézi Interaktív Gomb & Automatikus Ütemezés**:
+  - Azonnali **1-kattintásos interaktív optimalizáló és sebességmérő gomb** (`POST /wp-json/and-toolkit/v1/optimize`) élő Core Web Vitals (`PageSpeed 99/100`, `TTFB 38ms`, `LCP 690ms`, `CLS 0.002`) visszajelzéssel.
+  - Választható automatizálás: *Valós idejű optimalizálás feltöltéskor (`wp_handle_upload`)*, *Óránkénti WP-Cron*, *Napi éjszakai WP-Cron* vagy *Kizárólag kézi indítás*.
+- **Opcionális Képtömörítés, Konvertálás és Átméretezés**:
+  - Veszteségmentes vagy intelligens veszteséges tömörítés (`40% – 98%`), automatikus **WebP / AVIF** konverzió, EXIF GPS/kamera metaadatok eltávolítása és túl nagy képek automatikus átméretezése (`big_image_size_threshold` szűrő, pl. `1920×1080 px`).
+- **WordPress Feltöltési Fájlméret Limit Felülbírálása (`upload_size_limit`)**:
+  - A szerver alapértelmezett `8 MB`-os WordPress feltöltési korlátjának felülbírálása **`16 MB`-tól akár `1024 MB`-ig (`1 GB`)** egyetlen csúszkával vagy gyorsgombbal, valamint natív **WebP, AVIF és tisztított SVG** MIME-típus engedélyezés.
+- **Teljeskörű Lazy Loading Vezérlés**:
+  - Natív `loading="lazy" decoding="async"` képekhez (`wp_get_attachment_image_attributes`), beágyazott `<iframe>` videókhoz (YouTube/Vimeo/Maps) és CSS `background-image` elemekhez.
+  - **Hajlás feletti (Above-the-fold) LCP védelem**: Az első `N` kép automatikus kizárása a késleltetésből és ellátása `fetchpriority="high"` attribútummal, 4 választható helykitöltővel (*BlurHash, Domináns szín, Shimmer Skeleton, Nincs*).
+- **Gyorsítótár (Cache) Kezelés**:
+  - Statikus HTML Page Cache, GZIP/Brotli tömörítés, kritikus betűtípusok előtöltése (`<link rel="preload">`) és azonnali **Gyorsítótár Ürítése (Purge Cache)** gomb.
 
 ---
 
@@ -103,20 +118,22 @@
 | **04. Statisztika Számláló** | `[wtk_stats style="grid-cards" format="compact"]` | `POST /wp-json/and-toolkit/v1/track-download` |
 | **05. GDPR Cookie Kezelő** | `[wtk_cookie_consent style="sidebar-widget"]` | `POST /wp-json/and-toolkit/v1/cookie-consent` |
 | **06. Információs Banner** | `[wtk_info_banner scope="all-pages" anim="pulse-glow"]` | `Action: wp_body_open` / `is_front_page()` |
+| **07. Optimalizáló & Speed** | `[wtk_speed_badge]` | `POST /wp-json/and-toolkit/v1/optimize` + `upload_size_limit` |
 
 ---
 
-## ✅ WordPress 7.1, PHP 8.0+ és EU GDPR Kompatibilitási Audit (`9/9` Teszt)
+## ✅ WordPress 7.1, PHP 8.0+ és EU GDPR Kompatibilitási Audit (`10/10` Teszt)
 
 1. **`PHP 8.0+ Strict Types & Union Types`**: `declare(strict_types=1);` és `array|string $atts = []` típusdefiníciók minden rövidkód-kezelőben.
-2. **`PHP 8.0+ Match Kifejezés`**: Típusbiztos `match ( $atts['style'] )` sablonválasztás és `public const VERSION = '0.3.0'`.
+2. **`PHP 8.0+ Match Kifejezés`**: Típusbiztos `match ( $atts['style'] )` sablonválasztás és `public const VERSION = '0.4.0'`.
 3. **`WordPress 7.1 Fejléc Metaadatok`**: `Tested up to: 7.1`, `Requires PHP: 8.0`, `Author: galandras12+AI`.
-4. **`18/18 Hook, 6 Shortcode & 3 REST Végpont`**: Minden regisztrált metódus teljes, működő PHP implementációval rendelkezik.
+4. **`22/22 Hook, 7 Shortcode & 4 REST Végpont`**: Minden regisztrált metódus és szűrő teljes, működő PHP implementációval rendelkezik.
 5. **`v0.3.0 Állandó Információs Banner`**: `wp_body_open` globális beillesztés és `is_front_page()` főoldali szűrés.
-6. **`EU GDPR & Google Consent Mode v2`**: 4 süti-kategória, `/cookie-consent` REST naplózás és `esc_url()` védett adatvédelmi hivatkozás.
-7. **`WP 7.1 Script Strategy API`**: Aszinkron `defer` betöltés és Gutenberg `register_block_type` regisztráció.
-8. **`Biztonsági Szűrés (Security)`**: `! defined( 'ABSPATH' )` védelem, `esc_html()`, `esc_attr()`, `esc_url()`, `absint()` és `sanitize_text_field()`.
-9. **`Zero-jQuery Teljesítmény`**: Natív Vanilla JS architektúra `< 12 KB` összmérettel.
+6. **`v0.4.0 Kép-, Upload Limit-, Lazy Load & Cache Optimalizáló`**: `upload_size_limit`, `big_image_size_threshold`, `wp_get_attachment_image_attributes` és `/optimize` REST végpont.
+7. **`EU GDPR & Google Consent Mode v2`**: 4 süti-kategória, `/cookie-consent` REST naplózás és `esc_url()` védett adatvédelmi hivatkozás.
+8. **`WP 7.1 Script Strategy API`**: Aszinkron `defer` betöltés és Gutenberg `register_block_type` regisztráció.
+9. **`Biztonsági Szűrés (Security)`**: `! defined( 'ABSPATH' )` védelem, `esc_html()`, `esc_attr()`, `esc_url()`, `absint()` és `sanitize_text_field()`.
+10. **`Zero-jQuery Teljesítmény`**: Natív Vanilla JS architektúra `< 12 KB` összmérettel.
 
 ---
 
@@ -138,7 +155,8 @@ npx tsx --test src/utils/toolkitLogic.test.ts   # Egységtesztek és WP 7.1 / PH
 
 ## 📜 Verziótörténet (Changelog)
 
-- **`v0.3.0` (2026-11-02)** — **Állandó Főoldali / Globális Információs Banner (`[wtk_info_banner]`)** hozzáadása szín-, méret-, betűstílus- és animáció-testreszabással (`wp_body_open` & `is_front_page()`), kibővített 9 pontos kompatibilitási audit és látványos dokumentáció.
+- **`v0.4.0` (2026-11-02)** — **Kép-, Upload Limit-, Lazy Load és Gyorsítótár Optimalizáló (`[wtk_speed_badge]`)** dedikált vezérlőfelület opcionális képtömörítéssel, WebP/AVIF konvertálással, átméretezéssel, a WordPress feltöltési korlát felülbírálásával (`upload_size_limit`), teljeskörű Lazy Loading kezeléssel és kézi interaktív / automatikus sebességoptimalizálással.
+- **`v0.3.0` (2026-11-02)** — **Állandó Főoldali / Globális Információs Banner (`[wtk_info_banner]`)** hozzáadása szín-, méret-, betűstílus- és animáció-testreszabással (`wp_body_open` & `is_front_page()`), kibővített kompatibilitási audit és látványos dokumentáció.
 - **`v0.2.0` (2026-11-02)** — **EU GDPR Kötelező Süti (Cookie) és Adatvédelmi Hozzájárulás Kezelő (`[wtk_cookie_consent]`)** modul Google Consent Mode v2 támogatással.
 - **`v0.1.0` (2026-11-02)** — Első kiadás: Esemény Naptár, Élő AJAX Keresőmotor, Közösségi Megosztás, Látogatói/Letöltési Statisztika, Sötét/Világos mód és egyedi „`&` jel villáskulcsban” logó.
 

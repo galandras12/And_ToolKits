@@ -14,6 +14,8 @@ import {
   Sliders,
   Terminal,
   Zap,
+  KeyRound,
+  EyeOff,
 } from 'lucide-react';
 import {
   ActiveTab,
@@ -42,7 +44,9 @@ interface OverviewAndExportPanelProps {
       | 'banner'
       | 'optimizer'
       | 'auditLog'
-      | 'captcha',
+      | 'captcha'
+      | 'auth'
+      | 'wpHide',
     enabled: boolean
   ) => void;
   onUpdatePerformance: (patch: Partial<PerformanceConfig>) => void;
@@ -67,6 +71,8 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
     state.optimizer.enabled,
     state.auditLog.enabled,
     state.captcha.enabled,
+    state.auth.enabled,
+    state.wpHide.enabled,
   ].filter(Boolean).length;
 
   const perfMetrics = calculatePerformanceMetrics(state.performance, activeCount);
@@ -101,10 +107,10 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             <AndWrenchLogo size="lg" />
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                And ToolKit v0.6.0 — WordPress 7.1 &amp; PHP 8.0+ Forráskód (and-toolkit.php)
+                And ToolKit v0.7.0 — WordPress 7.1 &amp; PHP 8.0+ Forráskód (and-toolkit.php)
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong> · Verzió: <span className="font-mono">0.6.0</span> · Célkörnyezet: <span className="font-mono">WordPress 7.1 / PHP 8.0+ / GDPR / Optimalizáló / Audit Napló &amp; Botvédelem</span>
+                Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong> · Verzió: <span className="font-mono">0.7.0</span> · Célkörnyezet: <span className="font-mono">WordPress 7.1 / PHP 8.0+ / GDPR / Optimalizáló / Audit / CAPTCHA / Hitelesítés &amp; WP Rejtés</span>
               </p>
             </div>
           </div>
@@ -144,7 +150,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                WordPress 7.1, PHP 8.0, EU GDPR, Optimalizáló, Audit Napló &amp; Botvédelem Jelentés (v0.6.0)
+                WordPress 7.1, PHP 8.0, EU GDPR, Optimalizáló, Audit, Botvédelem, Hitelesítés &amp; WP Rejtés Jelentés (v0.7.0)
               </h3>
             </div>
             <span className="text-xs font-mono font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
@@ -181,7 +187,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
         <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
           <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Regisztrált WordPress 7.1 Rövidkódok (9 Shortcode), Filterek és REST Végpontok
+              Regisztrált WordPress 7.1 Rövidkódok (11 Shortcode), Filterek és REST Végpontok
             </h3>
           </div>
           <div className="overflow-x-auto">
@@ -321,6 +327,34 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                     Hook: authenticate, registration_errors, preprocess_comment
                   </td>
                 </tr>
+                <tr>
+                  <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-slate-100">
+                    10. Hitelesítés: 2FA TOTP, Időszinkron, Passkey, E-mail &amp; Offline Kódok (v0.7.0)
+                  </td>
+                  <td className="py-2.5 px-3 font-mono text-blue-600 dark:text-blue-400">
+                    [wtk_auth_manager]
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
+                    TOTP + {state.auth.passkeys.length} Passkey + {state.auth.offlinePasswords.length} Offline kód · Offset: {state.auth.manualTimeOffsetSec} mp
+                  </td>
+                  <td className="py-2.5 px-4 font-mono text-slate-500">
+                    REST: /wp-json/and-toolkit/v1/auth-sync-time
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-slate-100">
+                    11. WP Rejtés, AJAX Buborék Belépés &amp; Mesterjelszó Kapu (v0.7.0)
+                  </td>
+                  <td className="py-2.5 px-3 font-mono text-blue-600 dark:text-blue-400">
+                    [wtk_custom_login]
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
+                    {state.wpHide.customLoginSlug} · {state.wpHide.membersOnlyMode ? 'Tagoknak Zárolt' : 'Nyilvános'} · {state.wpHide.masterPasswordEnabled ? 'Mesterjelszó Aktív' : 'Mesterjelszó Kész'}
+                  </td>
+                  <td className="py-2.5 px-4 font-mono text-slate-500">
+                    REST: /wp-json/and-toolkit/v1/bubble-login · template_redirect
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -336,14 +370,14 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                GitHub Közzététel Előkészítve (v0.6.0 Release)
+                GitHub Közzététel Előkészítve (v0.7.0 Release)
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                A gyökérkönyvtárban az önálló <code className="font-mono">/and-toolkit.php</code> és a látványos <code className="font-mono">/README.md</code> frissítve a <code className="font-mono">0.6.0</code> Google reCAPTCHA v3 &amp; Cloudflare Turnstile Botvédelem modullal.
+                A gyökérkönyvtárban az önálló <code className="font-mono">/and-toolkit.php</code> és a látványos <code className="font-mono">/README.md</code> frissítve a <code className="font-mono">0.7.0</code> Hitelesítés (2FA, Időszinkron, Passkey, Offline kódok) és WP Rejtés &amp; Mesterjelszó modulokkal.
               </p>
             </div>
             <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-              Git: main · tag: v0.6.0
+              Git: main · tag: v0.7.0
             </span>
           </div>
           <div className="p-3 rounded-md bg-slate-950 text-slate-200 text-xs font-mono overflow-x-auto space-y-1">
@@ -359,7 +393,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
   // OVERVIEW MODE
   return (
     <div className="space-y-6">
-      {/* Overview Header with Custom Wrench-& Logo, Version 0.5.0 & Author galandras12+AI */}
+      {/* Overview Header with Custom Wrench-& Logo, Version 0.7.0 & Author galandras12+AI */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-start sm:items-center gap-3.5">
           <AndWrenchLogo size="lg" />
@@ -369,14 +403,14 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             </h2>
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-                Verzió: 0.6.0
+                Verzió: 0.7.0
               </span>
               <span aria-hidden="true">·</span>
               <span>
                 Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong>
               </span>
               <span aria-hidden="true">·</span>
-              <span>WordPress 7.1 Admin, GDPR, Info Banner, Optimalizáló, Audit Napló &amp; Botvédelem</span>
+              <span>WordPress 7.1 Admin, GDPR, Info Banner, Optimalizáló, Audit, CAPTCHA, Hitelesítés &amp; WP Rejtés</span>
             </div>
           </div>
         </div>
@@ -732,7 +766,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
         </div>
 
         {/* Module 9: Bot Protection — Google reCAPTCHA v3 & Cloudflare Turnstile (New in v0.6.0) */}
-        <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4 md:col-span-2">
+        <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -757,7 +791,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
               />
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Opcionálisan választható Google reCAPTCHA v3 vagy Cloudflare Turnstile konfigurációs felület Site Key / Secret Key kezeléssel, finomhangolható észlelési küszöbértékkel (0.1–0.9), WordPress űrlapvédelemmel (belépés, regisztráció, kommentek, jelszó-emlékeztető) és élő bot-szimulátorral.
+              Opcionálisan választható Google reCAPTCHA v3 vagy Cloudflare Turnstile konfigurációs felület Site Key / Secret Key kezeléssel, finomhangolható észlelési küszöbértékkel (0.1–0.9) és élő bot-szimulátorral.
             </p>
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -769,6 +803,90 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             >
               <Sliders className="w-3.5 h-3.5" />
               <span>Botvédelem &amp; Küszöbérték beállítása</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Module 10: Hitelesítés (2FA, Time Drift Sync, Passkey, Email, Offline Vault) (New in v0.7.0) */}
+        <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-md bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    10. Hitelesítés: 2FA, Időszinkron, Passkey &amp; Offline Széf (v0.7.0)
+                  </h3>
+                  <div className="text-xs text-slate-500 font-mono">
+                    TOTP + {state.auth.passkeys.length} Passkey + {state.auth.offlinePasswords.length} Offline kód · Offset: {state.auth.manualTimeOffsetSec} mp
+                  </div>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                aria-label="Hitelesítés modul engedélyezése"
+                checked={state.auth.enabled}
+                onChange={(e) => onToggleModule('auth', e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer"
+              />
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              2FA szabvány hitelesítő (RFC 6238), szerver–kliens időelcsúszás korrekció és készülékszinkron, WebAuthn Passkey, E-mail OTP, frissítés-biztos Offline mentett jelszavak, rangonkénti szabálymátrix, IP fehérlista és wp-admin mentes shortcode felület.
+            </p>
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span className="text-[11px] font-mono text-slate-400">[wtk_auth_manager]</span>
+            <button
+              type="button"
+              onClick={() => onNavigateTab('auth')}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Hitelesítés &amp; Szabályok megnyitása</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Module 11: WP Rejtés, Bubble Login, Members-Only Zero Source Leak & Master Password (New in v0.7.0) */}
+        <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4 md:col-span-2">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-md bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                  <EyeOff className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    11. WP Rejtés, AJAX Buborék Belépés, Zárolt Mód &amp; Mesterjelszó (v0.7.0)
+                  </h3>
+                  <div className="text-xs text-slate-500 font-mono">
+                    Belépő: {state.wpHide.customLoginSlug} · Tartalom: {state.wpHide.customContentSlug} · Mesterjelszó: {state.wpHide.masterPasswordEnabled ? 'AKTÍV' : 'KÉSZENLÉTBEN'}
+                  </div>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                aria-label="WP Rejtés modul engedélyezése"
+                checked={state.wpHide.enabled}
+                onChange={(e) => onToggleModule('wpHide', e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer"
+              />
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              WordPress URL-ek álcázása robotok elől, wp-login.php és wp-admin elrejtése egyedi URL-lel vagy shortcode-dal, lebegő AJAX buborék bejelentkező widget, forráskód-szivárgás mentes csak-tagoknak mód, felhasználónév/e-mail maszkolás és titkosított Mesterjelszó admin felfedéssel és IP fehérlistával.
+            </p>
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span className="text-[11px] font-mono text-slate-400">[wtk_custom_login]</span>
+            <button
+              type="button"
+              onClick={() => onNavigateTab('wp-hide')}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>WP Rejtés &amp; Mesterjelszó beállítása</span>
             </button>
           </div>
         </div>
@@ -875,7 +993,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              WordPress 7.1, PHP 8.0+, EU GDPR, Optimalizáló, Audit Napló &amp; Botvédelem Audit (v0.6.0)
+              WordPress 7.1, PHP 8.0+, EU GDPR, Optimalizáló, Audit, Botvédelem, Hitelesítés &amp; WP Rejtés Audit (v0.7.0)
             </h3>
           </div>
           <div className="flex items-center gap-3 text-xs">

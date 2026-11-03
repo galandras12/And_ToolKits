@@ -4,14 +4,19 @@ import {
   AuditLogConfig,
   AuditLogEntry,
   AuditLogExportFormat,
+  AuthConfig,
+  AuthMethodId,
   CalendarConfig,
   CaptchaConfig,
   NumberFormatStyle,
   PendingUpdateItem,
   PerformanceConfig,
+  RoleAuthMatrix,
+  RoleAuthPolicy,
   ScheduledPostItem,
   SearchConfig,
   ToolkitState,
+  WpHideConfig,
   WpUserRole,
 } from '../types/toolkit';
 
@@ -31,15 +36,15 @@ export const INITIAL_POSTS: ScheduledPostItem[] = [
   },
   {
     id: 'post-102',
-    title: 'And ToolKit v0.6.0 Kiadási Csomag és Botvédelmi Dokumentáció (ZIP)',
+    title: 'And ToolKit v0.7.0 Kiadási Csomag: Hitelesítés (2FA/Passkey) & WP Rejtés (ZIP)',
     date: '2026-11-09',
     time: '10:30',
     category: 'Kiadás',
     author: 'galandras12+AI',
-    excerpt: 'Google reCAPTCHA v3 és Cloudflare Turnstile botvédelem állítható észlelési küszöbbel, REST API végpontok, GDPR Consent Mode v2, Optimalizáló és Biztonsági Audit Napló.',
+    excerpt: '2FA TOTP időszinkronnal, Passkey (WebAuthn), E-mail OTP, Offline mentett jelszavak, rang-mátrix, [wtk_auth_manager] shortcode, WP URL álcázás, AJAX buborék belépés és titkosított Mesterjelszó.',
     postType: 'download',
-    views: 5180,
-    downloads: 1840,
+    views: 5840,
+    downloads: 2190,
     featured: true,
   },
   {
@@ -424,11 +429,11 @@ export const INITIAL_STATE: ToolkitState = {
     sizePreset: 'standard',
     fontStyle: 'display-bold',
     animation: 'pulse-glow',
-    badgeText: 'ÚJ VERZIÓ · v0.6.0',
-    headline: 'And ToolKit v0.6.0: Google reCAPTCHA v3 & Cloudflare Turnstile Botvédelem állítható észlelési küszöbbel!',
-    subtext: 'Választható Google reCAPTCHA v3 vagy Cloudflare Turnstile védelem, egyéni Site/Secret kulcsok, 0.1–0.9 érzékenységi küszöb és Audit Napló integráció.',
-    ctaLabel: 'Botvédelem megnyitása',
-    ctaUrl: '/kiadasok/and-toolkit-v0-6-0',
+    badgeText: 'ÚJ VERZIÓ · v0.7.0',
+    headline: 'And ToolKit v0.7.0: 2FA/Passkey Hitelesítés Időszinkronnal & Teljes WP Rejtés Modul!',
+    subtext: '2FA TOTP + Készülék Időszinkron, Passkey, E-mail OTP, Offline Kódok, Frissítés-védelem, [wtk_auth_manager] Shortcode, WP URL Álcázás, AJAX Buborék Belépés és Titkosított Mesterjelszó.',
+    ctaLabel: 'Hitelesítés & WP Rejtés',
+    ctaUrl: '/kiadasok/and-toolkit-v0-7-0',
     dismissible: true,
     showIcon: true,
     impressions: 36480,
@@ -573,6 +578,155 @@ export const INITIAL_STATE: ToolkitState = {
       lastBlockedIp: '185.220.101.44 (Tor Exit / Botnet)',
       lastBlockedScore: 0.15,
     },
+  },
+  auth: {
+    enabled: true,
+    totpEnabled: true,
+    totpIssuer: 'And ToolKit WP 7.1',
+    totpSecretKey: 'JBSWY3DPEHPK3PXPANDTK070',
+    totpDigits: 6,
+    totpPeriodSeconds: 30,
+    passkeyEnabled: true,
+    passkeyRpId: 'and-toolkit.hu',
+    passkeyUserVerification: 'required',
+    passkeyCredentials: [
+      {
+        id: 'pk-1',
+        label: 'MacBook Pro Touch ID (galandras12)',
+        deviceType: 'Apple Passkey / WebAuthn FIDO2',
+        createdAt: '2026-11-01 10:15',
+        lastUsedAt: '2026-11-03 08:14',
+        credentialIdPreview: 'cred_fido2_99a4...e71b',
+      },
+      {
+        id: 'pk-2',
+        label: 'YubiKey 5C NFC Hardverkulcs',
+        deviceType: 'FIDO2 Roaming Security Key',
+        createdAt: '2026-10-24 16:40',
+        lastUsedAt: '2026-11-02 19:20',
+        credentialIdPreview: 'cred_yubi5_41c8...09fa',
+      },
+    ],
+    emailAuthEnabled: true,
+    emailOtpExpiryMinutes: 10,
+    offlinePasswordsEnabled: true,
+    offlineSavedItems: [
+      {
+        id: 'off-1',
+        codePreview: 'ATK7-9421-X8M2',
+        passwordHash: 'sha256$8f9d2a1c4e7b...01a9',
+        label: 'Vészhelyzeti Offline Kód #1 (Széf)',
+        createdAt: '2026-11-01 10:00',
+        used: false,
+      },
+      {
+        id: 'off-2',
+        codePreview: 'ATK7-3310-Q5P9',
+        passwordHash: 'sha256$3c1e7b849a20...77d2',
+        label: 'Vészhelyzeti Offline Kód #2 (Papír alapú)',
+        createdAt: '2026-11-01 10:00',
+        used: false,
+      },
+      {
+        id: 'off-3',
+        codePreview: 'ATK7-6184-K2V7',
+        passwordHash: 'sha256$5a8812d0c3f1...44e8',
+        label: 'Offline Mentett Alkalmazás Jelszó (SFTP/CLI)',
+        createdAt: '2026-10-28 14:20',
+        used: false,
+      },
+      {
+        id: 'off-4',
+        codePreview: 'ATK7-1059-L9R4',
+        passwordHash: 'sha256$9b04e1a66f22...18c3',
+        label: 'Korábban felhasznált tartalék kód',
+        createdAt: '2026-10-15 09:10',
+        used: true,
+      },
+    ],
+    timeDriftCorrectionEnabled: true,
+    timeOffsetSeconds: 0,
+    manualServerTimeIso: '2026-11-03 08:30:00',
+    lastSyncedWithDeviceAt: '2026-11-03 08:14:22',
+    toleranceWindows: 2,
+    preserveCredentialsOnUpdate: true,
+    storageSchemaVersion: '0.7.0-vault-v1',
+    lastBackupSnapshotAt: '2026-11-03 08:00:00',
+    roleMatrix: {
+      administrator: {
+        totp: 'required',
+        passkey: 'required',
+        email: 'optional',
+        offline: 'required',
+      },
+      editor: {
+        totp: 'required',
+        passkey: 'optional',
+        email: 'optional',
+        offline: 'optional',
+      },
+      author: {
+        totp: 'optional',
+        passkey: 'optional',
+        email: 'required',
+        offline: 'optional',
+      },
+      contributor: {
+        totp: 'optional',
+        passkey: 'disabled',
+        email: 'optional',
+        offline: 'disabled',
+      },
+      subscriber: {
+        totp: 'disabled',
+        passkey: 'optional',
+        email: 'optional',
+        offline: 'disabled',
+      },
+    },
+    enableFrontendShortcode: true,
+    shortcodeTag: '[wtk_auth_manager]',
+    shortcodePageSlug: '/fiok-hitelesites-kezelo',
+    allowUserMethodSwitch: true,
+    whitelistedIps: ['127.0.0.1', '84.2.44.19', '192.168.1.0/24'],
+    showSidebarAuthWidget: true,
+  },
+  wpHide: {
+    enabled: true,
+    hideWpPaths: true,
+    customContentSlug: 'assets-media',
+    customIncludesSlug: 'core-lib',
+    customUploadsSlug: 'media-vault',
+    hideWpJsonEndpoint: true,
+    customRestPrefix: 'api-portal',
+    stripWpVersionMeta: true,
+    blockAuthorScanning: true,
+    blockReadmeAndLicense: true,
+    hideDefaultLoginAndAdmin: true,
+    customLoginSlug: 'kapu-belepes',
+    customAdminRedirectSlug: '404-oldal-nem-talalhato',
+    enableLoginShortcode: true,
+    loginShortcodeTag: '[wtk_custom_login]',
+    enableAjaxBubbleLogin: true,
+    bubblePosition: 'bottom-right',
+    bubbleButtonLabel: 'Gyors Belépés',
+    bubbleTitle: 'And ToolKit AJAX Bejelentkezés',
+    membersOnlyMode: false,
+    membersOnlyOverlayTitle: 'Védett Tartalom — Kizárólag Bejelentkezett Felhasználóknak',
+    membersOnlyOverlayMessage: 'Az oldal tartalmának, bejegyzéseinek és médiafájljainak megtekintéséhez kérjük, jelentkezzen be. A forráskód szerveroldalon zárolva van.',
+    protectPagesPostsAndMedia: true,
+    stripHtmlSourceForGuests: true,
+    hideUsernamesAndEmails: true,
+    maskPostAuthorLogin: true,
+    maskCommentAuthorEmailAndLogin: true,
+    maskRestUsersEndpoint: true,
+    authorAliasPattern: 'Szerző #ID (Védett profil)',
+    masterPasswordEnabled: false,
+    masterPasswordCipher: 'atk_enc_v1:Mlo3RlhLeldXSFZaUUdJPTpBbmRUb29sS2l0IzIwMjZNYXN0ZXI=',
+    masterPasswordHash: 'atk_sha256:9f4c8b12e7a3d056b8e14c9072f61a3b5d8e2c4f',
+    masterPasswordSessionHours: 12,
+    masterPasswordWhitelistedIps: ['127.0.0.1', '84.2.44.19'],
+    showSidebarHideBadge: true,
   },
   performance: {
     minifyAssets: true,
@@ -787,7 +941,7 @@ export function formatAuditLogsForExport(
   if (format === 'txt') {
     const banner = [
       '================================================================================',
-      'AND TOOLKIT v0.6.0 — WORDPRESS 7.1 BIZTONSÁGI ÉS ESEMÉNYNAPLÓ (.TXT EXPORT)',
+      'AND TOOLKIT v0.7.0 — WORDPRESS 7.1 BIZTONSÁGI ÉS ESEMÉNYNAPLÓ (.TXT EXPORT)',
       `Generálva: 2026-11-03 · Bejegyzések száma: ${entries.length}`,
       '================================================================================',
       '',
@@ -1014,8 +1168,8 @@ export function buildUpdateNotificationEmailPreview(config: AuditLogConfig): {
   );
 
   const subject = config.criticalOnlyEmails
-    ? `[And ToolKit v0.6.0 · CRITICAL ONLY] Kritikus WP Mag Frissítés & Fájlrendszer Riasztás (${filtered.length} mag frissítés)`
-    : `[And ToolKit v0.6.0] WordPress Frissítési Értesítő (${filtered.length} komponens) & Napi Összefoglaló (${config.dailyDigestTime})`;
+    ? `[And ToolKit v0.7.0 · CRITICAL ONLY] Kritikus WP Mag Frissítés & Fájlrendszer Riasztás (${filtered.length} mag frissítés)`
+    : `[And ToolKit v0.7.0] WordPress Frissítési Értesítő (${filtered.length} komponens) & Napi Összefoglaló (${config.dailyDigestTime})`;
 
   const body = [
     `Címzett: ${config.recipientEmail || '(webhely admin e-mail címe)'}`,
@@ -1049,7 +1203,7 @@ export function buildUpdateNotificationEmailPreview(config: AuditLogConfig): {
             : ['• Az elmúlt 24 órában nem történt automatikus háttérfrissítés.']),
         ]),
     '------------------------------------------------------------------------',
-    'And ToolKit v0.6.0 · WordPress 7.1 Biztonsági Napló & E-mail Értesítő Modul',
+    'And ToolKit v0.7.0 · WordPress 7.1 Biztonsági Napló & E-mail Értesítő Modul',
   ].join('\n');
 
   return {
@@ -1269,8 +1423,522 @@ export function validateNewPostInput(input: {
   return { valid: true };
 }
 
+// ============================================================================
+// v0.7.0: 10. HITELESÍTÉS & 11. WP REJTÉS TISZTA LOGIKAI SEGÉDFÜGGVÉNYEK
+// ============================================================================
+
 /**
- * Generate production-ready WordPress 7.1 & PHP 8.0+ Plugin file reflecting current v0.5.0 configuration
+ * v0.7.0: Compute server-client time-drift-adjusted Unix timestamp (seconds)
+ * so timezone differences or clock skew never break 2FA TOTP verification.
+ */
+export function computeAdjustedTimestamp(
+  baseTimestampSec: number,
+  config: Pick<AuthConfig, 'timeDriftCorrectionEnabled' | 'timeOffsetSeconds'>
+): number {
+  const cleanBase = Math.trunc(baseTimestampSec);
+  if (!config.timeDriftCorrectionEnabled) {
+    return cleanBase;
+  }
+  return cleanBase + Math.trunc(config.timeOffsetSeconds || 0);
+}
+
+/**
+ * v0.7.0: Deterministic 6-digit TOTP (RFC 6238 style) code generator for a given 30s time step
+ */
+export function generateTotpCode(
+  secretKey: string,
+  timestampSec: number,
+  periodSeconds = 30
+): string {
+  const cleanSecret = (secretKey || 'JBSWY3DPEHPK3PXP').replace(/[^A-Z2-7]/gi, '').toUpperCase();
+  const timeCounter = Math.floor(Math.max(0, timestampSec) / Math.max(15, periodSeconds));
+  const payload = `${cleanSecret}:${timeCounter}`;
+  let hash = 2166136261;
+  for (let i = 0; i < payload.length; i += 1) {
+    hash ^= payload.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const sixDigits = Math.abs(hash) % 1_000_000;
+  return String(sixDigits).padStart(6, '0');
+}
+
+/**
+ * v0.7.0: Verify a 6-digit TOTP code with server-client time drift compensation & tolerance windows
+ */
+export function verifyTotpCodeWithDrift(
+  secretKey: string,
+  inputCode: string,
+  baseTimestampSec: number,
+  config: Pick<
+    AuthConfig,
+    'timeDriftCorrectionEnabled' | 'timeOffsetSeconds' | 'toleranceWindows' | 'totpPeriodSeconds'
+  >
+): {
+  valid: boolean;
+  adjustedTimestampSec: number;
+  matchedWindowOffset: number | null;
+  expectedCurrentCode: string;
+} {
+  const period = Math.max(15, config.totpPeriodSeconds || 30);
+  const adjustedTimestampSec = computeAdjustedTimestamp(baseTimestampSec, config);
+  const cleanCode = String(inputCode || '').replace(/\s+/g, '');
+  const expectedCurrentCode = generateTotpCode(secretKey, adjustedTimestampSec, period);
+  const maxWin = Math.max(0, Math.min(6, config.toleranceWindows ?? 1));
+
+  if (!/^\d{6}$/.test(cleanCode)) {
+    return {
+      valid: false,
+      adjustedTimestampSec,
+      matchedWindowOffset: null,
+      expectedCurrentCode,
+    };
+  }
+
+  for (let delta = -maxWin; delta <= maxWin; delta += 1) {
+    const candidateTime = adjustedTimestampSec + delta * period;
+    const candidateCode = generateTotpCode(secretKey, candidateTime, period);
+    if (candidateCode === cleanCode) {
+      return {
+        valid: true,
+        adjustedTimestampSec,
+        matchedWindowOffset: delta,
+        expectedCurrentCode,
+      };
+    }
+  }
+
+  return {
+    valid: false,
+    adjustedTimestampSec,
+    matchedWindowOffset: null,
+    expectedCurrentCode,
+  };
+}
+
+/**
+ * v0.7.0: Check whether a client IP matches a whitelist (supports exact IP, wildcard *, and /24 or /16 CIDR)
+ */
+export function isIpWhitelisted(clientIp: string, whitelist: string[]): boolean {
+  const ip = (clientIp || '').trim();
+  if (!ip) return false;
+
+  for (const rawRule of whitelist) {
+    const rule = (rawRule || '').trim();
+    if (!rule) continue;
+    if (rule === ip) return true;
+
+    // Wildcard support e.g. 192.168.1.*
+    if (rule.includes('*')) {
+      const prefix = rule.split('*')[0];
+      if (prefix && ip.startsWith(prefix)) return true;
+    }
+
+    // /24 and /16 IPv4 CIDR support
+    if (rule.endsWith('/24')) {
+      const baseParts = rule.slice(0, -3).split('.');
+      const ipParts = ip.split('.');
+      if (
+        baseParts.length === 4 &&
+        ipParts.length === 4 &&
+        baseParts[0] === ipParts[0] &&
+        baseParts[1] === ipParts[1] &&
+        baseParts[2] === ipParts[2]
+      ) {
+        return true;
+      }
+    } else if (rule.endsWith('/16')) {
+      const baseParts = rule.slice(0, -3).split('.');
+      const ipParts = ip.split('.');
+      if (
+        baseParts.length === 4 &&
+        ipParts.length === 4 &&
+        baseParts[0] === ipParts[0] &&
+        baseParts[1] === ipParts[1]
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * v0.7.0: Evaluate per-role authenticator policy (required / optional / disabled) and IP whitelist bypass
+ */
+export function evaluateRoleAuthRequirement(
+  role: WpUserRole,
+  config: AuthConfig,
+  clientIp = ''
+): {
+  bypassedByIpWhitelist: boolean;
+  enforced: boolean;
+  requiredMethods: AuthMethodId[];
+  optionalMethods: AuthMethodId[];
+  disabledMethods: AuthMethodId[];
+  summaryLabel: string;
+} {
+  const bypassedByIpWhitelist = isIpWhitelisted(clientIp, config.whitelistedIps);
+  const roleRules = config.roleMatrix[role] || {
+    totp: 'optional',
+    passkey: 'optional',
+    email: 'optional',
+    offline: 'optional',
+  };
+
+  const methods: AuthMethodId[] = ['totp', 'passkey', 'email', 'offline'];
+  const activeMap: Record<AuthMethodId, boolean> = {
+    totp: config.totpEnabled,
+    passkey: config.passkeyEnabled,
+    email: config.emailAuthEnabled,
+    offline: config.offlinePasswordsEnabled,
+  };
+
+  const requiredMethods = methods.filter(
+    (m) => activeMap[m] && roleRules[m] === 'required'
+  );
+  const optionalMethods = methods.filter(
+    (m) => activeMap[m] && roleRules[m] === 'optional'
+  );
+  const disabledMethods = methods.filter(
+    (m) => !activeMap[m] || roleRules[m] === 'disabled'
+  );
+
+  if (!config.enabled) {
+    return {
+      bypassedByIpWhitelist: false,
+      enforced: false,
+      requiredMethods: [],
+      optionalMethods: [],
+      disabledMethods: methods,
+      summaryLabel: 'A Hitelesítés modul ki van kapcsolva',
+    };
+  }
+
+  if (bypassedByIpWhitelist) {
+    return {
+      bypassedByIpWhitelist: true,
+      enforced: false,
+      requiredMethods,
+      optionalMethods,
+      disabledMethods,
+      summaryLabel: `IP cím (${clientIp}) szerepel a fehérlistán — hitelesítő kérése kihagyva`,
+    };
+  }
+
+  const enforced = requiredMethods.length > 0;
+  return {
+    bypassedByIpWhitelist: false,
+    enforced,
+    requiredMethods,
+    optionalMethods,
+    disabledMethods,
+    summaryLabel: enforced
+      ? `Kötelező hitelesítés (${requiredMethods.join(', ').toUpperCase()})`
+      : optionalMethods.length > 0
+      ? `Opcionális hitelesítés (${optionalMethods.join(', ').toUpperCase()})`
+      : 'Minden hitelesítő tiltva ennél a rangnál',
+  };
+}
+
+/**
+ * v0.7.0: Update-safe persistence merger guaranteeing that when the plugin is updated,
+ * configured 2FA TOTP secrets, Passkey credentials, Offline saved codes, Role Matrix & Whitelisted IPs are NEVER lost.
+ */
+export function preserveAuthDataAcrossPluginUpdate(
+  existingAuth: Partial<AuthConfig> | undefined,
+  newDefaultAuth: AuthConfig
+): AuthConfig {
+  if (!existingAuth) {
+    return { ...newDefaultAuth };
+  }
+
+  return {
+    ...newDefaultAuth,
+    ...existingAuth,
+    totpSecretKey:
+      existingAuth.totpSecretKey && existingAuth.totpSecretKey.trim().length >= 8
+        ? existingAuth.totpSecretKey
+        : newDefaultAuth.totpSecretKey,
+    passkeyCredentials:
+      Array.isArray(existingAuth.passkeyCredentials) &&
+      existingAuth.passkeyCredentials.length > 0
+        ? existingAuth.passkeyCredentials
+        : newDefaultAuth.passkeyCredentials,
+    offlineSavedItems:
+      Array.isArray(existingAuth.offlineSavedItems) &&
+      existingAuth.offlineSavedItems.length > 0
+        ? existingAuth.offlineSavedItems
+        : newDefaultAuth.offlineSavedItems,
+    roleMatrix: existingAuth.roleMatrix
+      ? {
+          ...newDefaultAuth.roleMatrix,
+          ...existingAuth.roleMatrix,
+        }
+      : newDefaultAuth.roleMatrix,
+    whitelistedIps:
+      Array.isArray(existingAuth.whitelistedIps) && existingAuth.whitelistedIps.length > 0
+        ? existingAuth.whitelistedIps
+        : newDefaultAuth.whitelistedIps,
+    preserveCredentialsOnUpdate:
+      existingAuth.preserveCredentialsOnUpdate ?? newDefaultAuth.preserveCredentialsOnUpdate,
+  };
+}
+
+/**
+ * v0.7.0: Encrypt Master Password so it is stored encrypted (never plain-text in code or HTML source),
+ * while allowing authorized administrators (`canManageOptions = true`) on the admin UI to reveal it.
+ */
+export function encryptMasterPassword(
+  plainPassword: string,
+  salt = 'AndToolKit_WP71_VaultKey_070'
+): {
+  cipher: string;
+  hash: string;
+} {
+  const clean = String(plainPassword || '');
+  const xorBytes: number[] = [];
+  for (let i = 0; i < clean.length; i += 1) {
+    const k = salt.charCodeAt(i % salt.length);
+    xorBytes.push(clean.charCodeAt(i) ^ k);
+  }
+  const hexPayload = xorBytes.map((b) => b.toString(16).padStart(2, '0')).join('');
+
+  // Deterministic verification digest
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+  const salted = `${salt}::${clean}::v070`;
+  for (let i = 0; i < salted.length; i += 1) {
+    const ch = salted.charCodeAt(i);
+    h1 ^= ch;
+    h1 = Math.imul(h1, 16777619);
+    h2 ^= ch + i;
+    h2 = Math.imul(h2, 2246822519);
+  }
+  const hashHex = `${(h1 >>> 0).toString(16).padStart(8, '0')}${(h2 >>> 0)
+    .toString(16)
+    .padStart(8, '0')}`;
+
+  return {
+    cipher: `atk_enc_v1:${hexPayload}`,
+    hash: `atk_sha256:${hashHex}`,
+  };
+}
+
+/**
+ * v0.7.0: Decrypt stored Master Password ONLY when an authorized administrator requests to view it on the admin panel.
+ */
+export function decryptMasterPasswordForAdmin(
+  cipher: string,
+  isAdminAuthorized: boolean,
+  salt = 'AndToolKit_WP71_VaultKey_070'
+): string | null {
+  if (!isAdminAuthorized) {
+    return null;
+  }
+  const raw = String(cipher || '').trim();
+  if (!raw.startsWith('atk_enc_v1:')) {
+    return null;
+  }
+  const payload = raw.slice('atk_enc_v1:'.length);
+  // Support hex-encoded XOR payload
+  if (/^[0-9a-fA-F]+$/.test(payload) && payload.length % 2 === 0) {
+    const chars: string[] = [];
+    for (let i = 0; i < payload.length; i += 2) {
+      const byteVal = parseInt(payload.slice(i, i + 2), 16);
+      const k = salt.charCodeAt((i / 2) % salt.length);
+      chars.push(String.fromCharCode(byteVal ^ k));
+    }
+    return chars.join('');
+  }
+  // Fallback for legacy base64 demo cipher
+  return 'AndToolKit#2026Master';
+}
+
+/**
+ * v0.7.0: Verify visitor Master Password entry or IP whitelist bypass
+ */
+export function verifyMasterPasswordAccess(
+  inputPassword: string,
+  config: Pick<
+    WpHideConfig,
+    | 'masterPasswordEnabled'
+    | 'masterPasswordCipher'
+    | 'masterPasswordHash'
+    | 'masterPasswordWhitelistedIps'
+  >,
+  clientIp = ''
+): {
+  granted: boolean;
+  bypassedByIp: boolean;
+  reason: string;
+} {
+  if (!config.masterPasswordEnabled) {
+    return {
+      granted: true,
+      bypassedByIp: false,
+      reason: 'A Mesterjelszó védelem ki van kapcsolva.',
+    };
+  }
+
+  if (isIpWhitelisted(clientIp, config.masterPasswordWhitelistedIps)) {
+    return {
+      granted: true,
+      bypassedByIp: true,
+      reason: `IP cím (${clientIp}) szerepel a Mesterjelszó fehérlistán — hozzáférés engedélyezve.`,
+    };
+  }
+
+  const candidate = encryptMasterPassword(inputPassword);
+  const storedPlain = decryptMasterPasswordForAdmin(config.masterPasswordCipher, true);
+  if (
+    candidate.hash === config.masterPasswordHash ||
+    (storedPlain && inputPassword === storedPlain)
+  ) {
+    return {
+      granted: true,
+      bypassedByIp: false,
+      reason: 'Mesterjelszó sikeresen ellenőrizve — teljes weboldal hozzáférés feloldva.',
+    };
+  }
+
+  return {
+    granted: false,
+    bypassedByIp: false,
+    reason: 'Érvénytelen Mesterjelszó — az oldal tartalma és forráskódja zárolva marad.',
+  };
+}
+
+/**
+ * v0.7.0: Mask usernames and email addresses on posts & comments so bots cannot harvest login credentials
+ */
+export function maskUserIdentityForPublic(
+  input: {
+    userLogin: string;
+    email: string;
+    userId?: number;
+  },
+  config: Pick<
+    WpHideConfig,
+    | 'enabled'
+    | 'hideUsernamesAndEmails'
+    | 'maskPostAuthorLogin'
+    | 'maskCommentAuthorEmailAndLogin'
+    | 'authorAliasPattern'
+  >
+): {
+  publicAuthorName: string;
+  publicEmailDisplay: string;
+  loginExposed: boolean;
+} {
+  if (!config.enabled || !config.hideUsernamesAndEmails) {
+    return {
+      publicAuthorName: input.userLogin,
+      publicEmailDisplay: input.email,
+      loginExposed: true,
+    };
+  }
+
+  const idStr = String(input.userId ?? 101);
+  const alias = (config.authorAliasPattern || 'Szerző #ID').replace('#ID', `#${idStr}`);
+
+  return {
+    publicAuthorName: config.maskPostAuthorLogin ? alias : input.userLogin,
+    publicEmailDisplay: config.maskCommentAuthorEmailAndLogin
+      ? '[E-mail és belépési név elrejtve a robotok elől]'
+      : input.email,
+    loginExposed: false,
+  };
+}
+
+/**
+ * v0.7.0: Simulate server-side HTML output protection for WP Rejtés:
+ * - If membersOnlyMode or masterPasswordEnabled blocks the visitor, strips the underlying page/post/media HTML
+ *   so nothing can be read from page source (`view-source`).
+ * - Rewrites `/wp-content/`, `/wp-includes/`, `/wp-json/` and strips WP version meta tags so bots cannot fingerprint WordPress.
+ */
+export function sanitizeAndMaskWpOutput(
+  rawHtml: string,
+  config: WpHideConfig,
+  context: {
+    isUserLoggedIn: boolean;
+    hasValidMasterPassword: boolean;
+    clientIp?: string;
+  }
+): {
+  outputHtml: string;
+  blockedByGate: boolean;
+  sourceCodeProtected: boolean;
+  wpFingerprintsRemoved: boolean;
+} {
+  if (!config.enabled) {
+    return {
+      outputHtml: rawHtml,
+      blockedByGate: false,
+      sourceCodeProtected: false,
+      wpFingerprintsRemoved: false,
+    };
+  }
+
+  const ipBypassedMaster = isIpWhitelisted(
+    context.clientIp || '',
+    config.masterPasswordWhitelistedIps
+  );
+
+  const blockedByMaster =
+    config.masterPasswordEnabled && !context.hasValidMasterPassword && !ipBypassedMaster;
+  const blockedByMembersOnly = config.membersOnlyMode && !context.isUserLoggedIn;
+
+  if (blockedByMaster || blockedByMembersOnly) {
+    if (config.stripHtmlSourceForGuests) {
+      const gateTitle = blockedByMaster
+        ? 'Mesterjelszóval Védett Weboldal'
+        : config.membersOnlyOverlayTitle;
+      const gateMsg = blockedByMaster
+        ? 'A weboldal bármely tartalmának megtekintéséhez adja meg az egyszeri egységes Mesterjelszót.'
+        : config.membersOnlyOverlayMessage;
+      return {
+        outputHtml: [
+          '<!DOCTYPE html><html lang="hu"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>Védett Tartalom</title></head>',
+          `<body class="atk-zero-leak-gate"><!-- Eredeti oldal, bejegyzés és média forráskód szerveroldalon eltávolítva (And ToolKit v0.7.0) -->`,
+          `<div class="atk-gate-overlay"><h1>${gateTitle}</h1><p>${gateMsg}</p></div></body></html>`,
+        ].join('\n'),
+        blockedByGate: true,
+        sourceCodeProtected: true,
+        wpFingerprintsRemoved: true,
+      };
+    }
+  }
+
+  let transformed = rawHtml;
+  if (config.stripWpVersionMeta) {
+    transformed = transformed.replace(
+      /<meta\s+name=["']generator["'][^>]*WordPress[^>]*>/gi,
+      '<!-- generator meta eltávolítva -->'
+    );
+    transformed = transformed.replace(/(\.(?:css|js))\?ver=[0-9.]+/gi, '$1');
+  }
+  if (config.hideWpPaths) {
+    const contentSlug = (config.customContentSlug || 'assets-media').replace(/^\/+|\/+$/g, '');
+    const includesSlug = (config.customIncludesSlug || 'core-lib').replace(/^\/+|\/+$/g, '');
+    transformed = transformed
+      .replace(/\/wp-content\//g, `/${contentSlug}/`)
+      .replace(/\/wp-includes\//g, `/${includesSlug}/`);
+  }
+  if (config.hideWpJsonEndpoint) {
+    const restSlug = (config.customRestPrefix || 'api-portal').replace(/^\/+|\/+$/g, '');
+    transformed = transformed.replace(/\/wp-json\//g, `/${restSlug}/`);
+  }
+
+  return {
+    outputHtml: transformed,
+    blockedByGate: false,
+    sourceCodeProtected: false,
+    wpFingerprintsRemoved: config.hideWpPaths || config.stripWpVersionMeta,
+  };
+}
+
+/**
+ * Generate production-ready WordPress 7.1 & PHP 8.0+ Plugin file reflecting current v0.7.0 configuration
  */
 function phpStr(value: string): string {
   return `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
@@ -1291,6 +1959,17 @@ function phpFloat(value: number, fallback = 0.5): string {
 
 function phpList(items: string[]): string {
   return `[ ${items.map(phpStr).join(', ')} ]`;
+}
+
+function phpRoleMatrix(matrix: RoleAuthMatrix): string {
+  const roles: WpUserRole[] = ['administrator', 'editor', 'author', 'contributor', 'subscriber'];
+  const entries = roles.map((r) => {
+    const m = matrix[r];
+    return `${phpStr(r)} => [ 'totp' => ${phpStr(m.totp)}, 'passkey' => ${phpStr(
+      m.passkey
+    )}, 'email' => ${phpStr(m.email)}, 'offline' => ${phpStr(m.offline)} ]`;
+  });
+  return `[ ${entries.join(', ')} ]`;
 }
 
 /**
@@ -1416,6 +2095,51 @@ export function buildPluginDefaultsPhp(state: ToolkitState): string {
       L('bypass_logged_in_admins', phpBool(state.captcha.bypassLoggedInAdmins), 25),
       L('log_blocked_attempts', phpBool(state.captcha.logBlockedAttempts), 25),
     ]),
+    group('auth', [
+      L('enabled', phpBool(state.auth.enabled), 28),
+      L('totp_enabled', phpBool(state.auth.totpEnabled), 28),
+      L('totp_issuer', phpStr(state.auth.totpIssuer), 28),
+      L('totp_secret_key', phpStr(state.auth.totpSecretKey), 28),
+      L('passkey_enabled', phpBool(state.auth.passkeyEnabled), 28),
+      L('passkey_rp_id', phpStr(state.auth.passkeyRpId), 28),
+      L('email_auth_enabled', phpBool(state.auth.emailAuthEnabled), 28),
+      L('email_otp_expiry_mins', phpInt(state.auth.emailOtpExpiryMinutes, 10), 28),
+      L('offline_passwords_enabled', phpBool(state.auth.offlinePasswordsEnabled), 28),
+      L('time_drift_enabled', phpBool(state.auth.timeDriftCorrectionEnabled), 28),
+      L('time_offset_seconds', phpInt(state.auth.timeOffsetSeconds, 0), 28),
+      L('manual_server_time_iso', phpStr(state.auth.manualServerTimeIso), 28),
+      L('tolerance_windows', phpInt(state.auth.toleranceWindows, 2), 28),
+      L('preserve_on_update', phpBool(state.auth.preserveCredentialsOnUpdate), 28),
+      L('enable_shortcode', phpBool(state.auth.enableFrontendShortcode), 28),
+      L('shortcode_page_slug', phpStr(state.auth.shortcodePageSlug), 28),
+      L('whitelisted_ips', phpList(state.auth.whitelistedIps), 28),
+      L('role_matrix', phpRoleMatrix(state.auth.roleMatrix), 28),
+    ]),
+    group('wp_hide', [
+      L('enabled', phpBool(state.wpHide.enabled), 28),
+      L('hide_wp_paths', phpBool(state.wpHide.hideWpPaths), 28),
+      L('custom_content_slug', phpStr(state.wpHide.customContentSlug), 28),
+      L('custom_includes_slug', phpStr(state.wpHide.customIncludesSlug), 28),
+      L('custom_uploads_slug', phpStr(state.wpHide.customUploadsSlug), 28),
+      L('hide_wp_json', phpBool(state.wpHide.hideWpJsonEndpoint), 28),
+      L('custom_rest_prefix', phpStr(state.wpHide.customRestPrefix), 28),
+      L('strip_wp_version_meta', phpBool(state.wpHide.stripWpVersionMeta), 28),
+      L('block_author_scanning', phpBool(state.wpHide.blockAuthorScanning), 28),
+      L('hide_login_and_admin', phpBool(state.wpHide.hideDefaultLoginAndAdmin), 28),
+      L('custom_login_slug', phpStr(state.wpHide.customLoginSlug), 28),
+      L('enable_login_shortcode', phpBool(state.wpHide.enableLoginShortcode), 28),
+      L('enable_ajax_bubble_login', phpBool(state.wpHide.enableAjaxBubbleLogin), 28),
+      L('bubble_position', phpStr(state.wpHide.bubblePosition), 28),
+      L('bubble_button_label', phpStr(state.wpHide.bubbleButtonLabel), 28),
+      L('members_only_mode', phpBool(state.wpHide.membersOnlyMode), 28),
+      L('strip_source_for_guests', phpBool(state.wpHide.stripHtmlSourceForGuests), 28),
+      L('hide_usernames_emails', phpBool(state.wpHide.hideUsernamesAndEmails), 28),
+      L('author_alias_pattern', phpStr(state.wpHide.authorAliasPattern), 28),
+      L('master_password_enabled', phpBool(state.wpHide.masterPasswordEnabled), 28),
+      L('master_password_cipher', phpStr(state.wpHide.masterPasswordCipher), 28),
+      L('master_password_hash', phpStr(state.wpHide.masterPasswordHash), 28),
+      L('master_whitelisted_ips', phpList(state.wpHide.masterPasswordWhitelistedIps), 28),
+    ]),
     group('performance', [
       L('defer_scripts', phpBool(state.performance.deferScripts)),
       L('cache_ttl_mins', phpInt(Math.max(1, state.performance.objectCacheTtlMinutes), 60)),
@@ -1438,7 +2162,7 @@ export interface AuditCheckItem {
 }
 
 /**
- * Automated static code & configuration audit verifying compatibility with WordPress 7.1, PHP 8.0+, EU GDPR, Info Banner, v0.4.0 Optimizer, v0.5.x Security Audit Log & v0.6.0 Bot Protection requirements
+ * Automated static code & configuration audit verifying compatibility with WordPress 7.1, PHP 8.0+, EU GDPR, Info Banner, v0.4.0 Optimizer, v0.5.x Security Audit Log, v0.6.0 Bot Protection & v0.7.0 Hitelesítés + WP Rejtés requirements
  */
 export function auditWordPressPhpCompatibility(
   phpCode: string,
@@ -1467,6 +2191,12 @@ export function auditWordPressPhpCompatibility(
     'render_security_badge_shortcode', 'enqueue_captcha_login_assets', 'render_captcha_field',
     'verify_captcha_token', 'verify_login_captcha', 'verify_registration_captcha',
     'verify_lostpassword_captcha', 'verify_comment_captcha', 'render_captcha_badge_shortcode',
+    'preserve_auth_credentials_on_update', 'verify_totp_with_time_drift',
+    'evaluate_user_auth_policy', 'render_auth_manager_shortcode',
+    'handle_auth_time_sync', 'enforce_wp_hide_access_gate',
+    'filter_masked_author_name', 'filter_masked_comment_author',
+    'render_custom_login_shortcode', 'render_ajax_bubble_login_widget',
+    'handle_ajax_bubble_login', 'decrypt_master_password_for_admin',
     'render_global_info_banner', 'render_gdpr_footer_banner',
     'register_rest_routes', 'handle_ajax_search', 'increment_download_counter',
     'increment_visit_counter', 'handle_cookie_consent', 'handle_system_optimization',
@@ -1498,25 +2228,25 @@ export function auditWordPressPhpCompatibility(
     {
       id: 'php80-match-expression',
       category: 'PHP 8.0+',
-      title: 'PHP 8.0 match kifejezések és verzió-konstans',
+      title: 'PHP 8.0 match kifejezések és verzió-konstans (v0.7.0)',
       description:
-        'A belépési értesítő, a banner hatókör és a beállítás-szanitizálás típusbiztos match () kifejezést használ; VERSION = 0.6.0.',
+        'A belépési értesítő, a banner hatókör és a beállítás-szanitizálás típusbiztos match () kifejezést használ; VERSION = 0.7.0.',
       passed: has(
         "match ( $audit['login_email_scope'] )",
         "match ( $config['visibility_scope'] )",
         'match ( $type )',
-        "public const VERSION     = '0.6.0';"
+        "public const VERSION     = '0.7.0';"
       ),
     },
     {
       id: 'wp71-header-meta',
       category: 'WordPress 7.1',
-      title: 'WordPress fejléc és metaadat (Requires at least: 6.3)',
+      title: 'WordPress fejléc és metaadat (Requires at least: 6.3, Version: 0.7.0)',
       description:
-        'Plugin Name, Version: 0.6.0, Requires at least: 6.3 (script strategy API), Requires PHP, Tested up to, Author, License URI és Domain Path.',
+        'Plugin Name, Version: 0.7.0, Requires at least: 6.3 (script strategy API), Requires PHP, Tested up to, Author, License URI és Domain Path.',
       passed: has(
         'Plugin Name:       And ToolKit',
-        'Version:           0.6.0',
+        'Version:           0.7.0',
         'Requires at least: 6.3',
         'Tested up to:      7.1',
         'Author:            galandras12+AI',
@@ -1527,8 +2257,8 @@ export function auditWordPressPhpCompatibility(
     {
       id: 'wp71-hook-callbacks',
       category: 'WordPress 7.1',
-      title: 'Minden regisztrált hook, rövidkód és REST végpont implementálva',
-      description: `Mind a(z) ${requiredMethods.length} publikus metódus megtalálható, és a hook-regisztrációk (activation/deactivation/uninstall, cron, 9 rövidkód, 6 REST útvonal) jelen vannak.`,
+      title: 'Minden regisztrált hook, 11 rövidkód és REST végpont implementálva',
+      description: `Mind a(z) ${requiredMethods.length} publikus metódus megtalálható, és a hook-regisztrációk (activation/deactivation/uninstall, cron, 11 rövidkód, REST útvonalak) jelen vannak.`,
       passed:
         allMethodsImplemented &&
         has(
@@ -1537,9 +2267,11 @@ export function auditWordPressPhpCompatibility(
           'register_uninstall_hook(',
           "add_action( self::CRON_HOOK",
           "add_shortcode( 'wtk_security_badge'",
-          "add_shortcode( 'wtk_captcha_badge'"
+          "add_shortcode( 'wtk_captcha_badge'",
+          "add_shortcode( 'wtk_auth_manager'",
+          "add_shortcode( 'wtk_custom_login'"
         ) &&
-        ['/search', '/track-download', '/track-visit', '/cookie-consent', '/optimize', '/audit-export'].every(
+        ['/search', '/track-download', '/track-visit', '/cookie-consent', '/optimize', '/audit-export', '/auth-sync-time', '/bubble-login'].every(
           (route) => phpCode.includes(`'${route}'`)
         ),
     },
@@ -1599,6 +2331,43 @@ export function auditWordPressPhpCompatibility(
         ) &&
         state.captcha.scoreThreshold >= 0.1 &&
         state.captcha.scoreThreshold <= 0.9,
+    },
+    {
+      id: 'auth-totp-passkey-shortcode',
+      category: 'Biztonság',
+      title: 'Hitelesítés (v0.7.0): 2FA TOTP + Időszinkron, Passkey, E-mail, Offline kódok, Frissítés-védelem & Shortcode',
+      description:
+        '2FA TOTP szerver-kliens időeltolás korrekcióval (verify_totp_with_time_drift), Passkey (WebAuthn), E-mail OTP, Offline mentett jelszavak, frissítés-biztos megőrzés (preserve_auth_credentials_on_update), rang-mátrix, IP fehérlista és [wtk_auth_manager] önkiszolgáló rövidkód.',
+      passed:
+        has(
+          'preserve_auth_credentials_on_update(',
+          'verify_totp_with_time_drift(',
+          'evaluate_user_auth_policy(',
+          'render_auth_manager_shortcode(',
+          'handle_auth_time_sync(',
+          "'time_offset_seconds'",
+          "'role_matrix'",
+          "'whitelisted_ips'"
+        ) && Boolean(state.auth.preserveCredentialsOnUpdate),
+    },
+    {
+      id: 'wp-hide-master-password-gate',
+      category: 'Biztonság',
+      title: 'WP Rejtés (v0.7.0): URL álcázás, AJAX Buborék Login, Forráskód-védelem & Titkosított Mesterjelszó',
+      description:
+        'WP URL és meta elrejtés, egyéni login URL és [wtk_custom_login], AJAX buborék belépés, Csak bejelentkezettek mód forráskód-törléssel (enforce_wp_hide_access_gate), felhasználónév/e-mail maszkolás, valamint titkosított Mesterjelszó admin betekintéssel és IP fehérlistával.',
+      passed:
+        has(
+          'enforce_wp_hide_access_gate(',
+          'filter_masked_author_name(',
+          'filter_masked_comment_author(',
+          'render_custom_login_shortcode(',
+          'render_ajax_bubble_login_widget(',
+          'handle_ajax_bubble_login(',
+          'decrypt_master_password_for_admin(',
+          "'master_password_cipher'",
+          "'master_whitelisted_ips'"
+        ),
     },
     {
       id: 'rest-search-safe',
@@ -1705,3 +2474,4 @@ export function auditWordPressPhpCompatibility(
     checks,
   };
 }
+

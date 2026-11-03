@@ -14,11 +14,14 @@ import {
   Sun,
   Terminal,
   Zap,
+  KeyRound,
+  EyeOff,
 } from 'lucide-react';
 import {
   ActiveTab,
   AuditLogConfig,
   AuditLogEntry,
+  AuthConfig,
   BannerConfig,
   CalendarConfig,
   CaptchaConfig,
@@ -32,12 +35,14 @@ import {
   SocialPlatformId,
   StatsConfig,
   ToolkitState,
+  WpHideConfig,
 } from './types/toolkit';
 import {
   INITIAL_AUDIT_ENTRIES,
   INITIAL_STATE,
   calculatePerformanceMetrics,
   evaluateCaptchaVerification,
+  preserveAuthDataAcrossPluginUpdate,
 } from './utils/toolkitLogic';
 import { LiveSidebarPreview } from './components/LiveSidebarPreview';
 import { CalendarModulePanel } from './components/CalendarModulePanel';
@@ -49,15 +54,20 @@ import { InfoBannerModulePanel } from './components/InfoBannerModulePanel';
 import { OptimizerModulePanel } from './components/OptimizerModulePanel';
 import { AuditLogModulePanel } from './components/AuditLogModulePanel';
 import { CaptchaModulePanel } from './components/CaptchaModulePanel';
+import { AuthModulePanel } from './components/AuthModulePanel';
+import { WpHideModulePanel } from './components/WpHideModulePanel';
 import { OverviewAndExportPanel } from './components/OverviewAndExportPanel';
 import { AndWrenchLogo } from './components/AndWrenchLogo';
 
-const STORAGE_KEY = 'and_toolkit_wp_state_v060';
+const STORAGE_KEY = 'and_toolkit_wp_state_v070';
+const LEGACY_STORAGE_KEY = 'and_toolkit_wp_state_v060';
 
 export default function App() {
   const [state, setState] = useState<ToolkitState>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved =
+        localStorage.getItem(STORAGE_KEY) ||
+        localStorage.getItem(LEGACY_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         return {
@@ -66,6 +76,14 @@ export default function App() {
           captcha: {
             ...INITIAL_STATE.captcha,
             ...(parsed.captcha || {}),
+          },
+          auth: preserveAuthDataAcrossPluginUpdate(
+            parsed.auth,
+            INITIAL_STATE.auth
+          ),
+          wpHide: {
+            ...INITIAL_STATE.wpHide,
+            ...(parsed.wpHide || {}),
           },
         };
       }
@@ -172,6 +190,20 @@ export default function App() {
     }));
   };
 
+  const updateAuth = (patch: Partial<AuthConfig>) => {
+    setState((prev) => ({
+      ...prev,
+      auth: { ...prev.auth, ...patch },
+    }));
+  };
+
+  const updateWpHide = (patch: Partial<WpHideConfig>) => {
+    setState((prev) => ({
+      ...prev,
+      wpHide: { ...prev.wpHide, ...patch },
+    }));
+  };
+
   const updatePerformance = (patch: Partial<PerformanceConfig>) => {
     setState((prev) => ({
       ...prev,
@@ -189,7 +221,9 @@ export default function App() {
       | 'banner'
       | 'optimizer'
       | 'auditLog'
-      | 'captcha',
+      | 'captcha'
+      | 'auth'
+      | 'wpHide',
     enabled: boolean
   ) => {
     setState((prev) => ({
@@ -598,8 +632,13 @@ export default function App() {
   };
 
   const handleResetAll = () => {
-    setState(INITIAL_STATE);
-    triggerSaveFeedback('Alapértelmezett And ToolKit v0.6.0 beállítások visszaállítva');
+    setState((prev) => ({
+      ...INITIAL_STATE,
+      auth: preserveAuthDataAcrossPluginUpdate(prev.auth, INITIAL_STATE.auth),
+    }));
+    triggerSaveFeedback(
+      'Alapértelmezett And ToolKit v0.7.0 beállítások visszaállítva (2FA, Passkey és Offline kódok megőrizve!)'
+    );
   };
 
   const activeModulesCount = [
@@ -612,6 +651,8 @@ export default function App() {
     state.optimizer.enabled,
     state.auditLog.enabled,
     state.captcha.enabled,
+    state.auth.enabled,
+    state.wpHide.enabled,
   ].filter(Boolean).length;
 
   const perf = calculatePerformanceMetrics(state.performance, activeModulesCount);
@@ -778,6 +819,34 @@ export default function App() {
           >
             Botvédelem
           </a>
+          <a
+            href="#auth"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveTab('auth');
+            }}
+            className={`py-1 transition-colors whitespace-nowrap shrink-0 border-b-2 ${
+              activeTab === 'auth'
+                ? 'border-blue-600 text-slate-900 dark:text-slate-100 font-semibold'
+                : 'border-transparent hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            Hitelesítés
+          </a>
+          <a
+            href="#wp-hide"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveTab('wp-hide');
+            }}
+            className={`py-1 transition-colors whitespace-nowrap shrink-0 border-b-2 ${
+              activeTab === 'wp-hide'
+                ? 'border-blue-600 text-slate-900 dark:text-slate-100 font-semibold'
+                : 'border-transparent hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            WP Rejtés
+          </a>
         </nav>
 
         {/* Zone 3: 1 Primary Action */}
@@ -805,14 +874,14 @@ export default function App() {
               And ToolKit
             </span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono tabular-nums">Verzió: 0.6.0</span>
+            <span className="font-mono tabular-nums">Verzió: 0.7.0</span>
             <span aria-hidden="true">·</span>
             <span>
               Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong>
             </span>
             <span aria-hidden="true">·</span>
             <span className="font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-              {activeModulesCount}/9 modul · Betöltés: {perf.estimatedLoadMs}ms ({perf.bundleSizeKb} KB)
+              {activeModulesCount}/11 modul · Betöltés: {perf.estimatedLoadMs}ms ({perf.bundleSizeKb} KB)
             </span>
           </div>
 
@@ -888,6 +957,8 @@ export default function App() {
             { id: 'optimizer' as const, label: 'Optimalizáló', icon: Zap },
             { id: 'audit-log' as const, label: 'Naplózás & E-mail', icon: Terminal },
             { id: 'captcha' as const, label: 'Botvédelem', icon: ShieldCheck },
+            { id: 'auth' as const, label: 'Hitelesítés', icon: KeyRound },
+            { id: 'wp-hide' as const, label: 'WP Rejtés', icon: EyeOff },
             { id: 'export' as const, label: 'PHP Kód', icon: Code2 },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -1008,6 +1079,52 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'auth' && (
+              <AuthModulePanel
+                config={state.auth}
+                onChange={updateAuth}
+                onAppendAuditLog={(partial) =>
+                  handleAppendAuditLogEntry({
+                    id: `log-auth-${Date.now()}`,
+                    timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
+                    category: partial.category,
+                    actorUser: partial.actorLogin || 'galandras12',
+                    actorRole: partial.actorRole || 'administrator',
+                    actionLabel: partial.target || 'Hitelesítés művelet',
+                    targetObject: partial.target || 'Hitelesítés',
+                    details: partial.summary || '',
+                    ipLocation: partial.actorIp || '127.0.0.1',
+                    deviceBrowser: partial.userAgent || 'And ToolKit Studio',
+                    isNewDeviceOrLocation: false,
+                    severity: partial.severity,
+                  })
+                }
+              />
+            )}
+
+            {activeTab === 'wp-hide' && (
+              <WpHideModulePanel
+                config={state.wpHide}
+                onChange={updateWpHide}
+                onAppendAuditLog={(partial) =>
+                  handleAppendAuditLogEntry({
+                    id: `log-hide-${Date.now()}`,
+                    timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
+                    category: partial.category,
+                    actorUser: partial.actorLogin || 'galandras12',
+                    actorRole: partial.actorRole || 'administrator',
+                    actionLabel: partial.target || 'WP Rejtés művelet',
+                    targetObject: partial.target || 'WP Rejtés',
+                    details: partial.summary || '',
+                    ipLocation: partial.actorIp || '127.0.0.1',
+                    deviceBrowser: partial.userAgent || 'And ToolKit Studio',
+                    isNewDeviceOrLocation: false,
+                    severity: partial.severity,
+                  })
+                }
+              />
+            )}
+
             {activeTab === 'export' && (
               <OverviewAndExportPanel
                 mode="export"
@@ -1040,7 +1157,7 @@ export default function App() {
       <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4">
         <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
           <span>
-            And ToolKit v0.6.0 · Készítő: galandras12+AI · Auditálva: WordPress 7.1, PHP 8.0+ &amp; EU GDPR
+            And ToolKit v0.7.0 · Készítő: galandras12+AI · Auditálva: WordPress 7.1, PHP 8.0+ &amp; EU GDPR
           </span>
           <div className="flex items-center gap-4">
             <button

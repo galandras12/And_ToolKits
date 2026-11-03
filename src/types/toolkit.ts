@@ -11,6 +11,8 @@ export type ActiveTab =
   | 'optimizer'
   | 'audit-log'
   | 'captcha'
+  | 'auth'
+  | 'wp-hide'
   | 'export';
 
 export type CalendarWidgetStyle = 'compact' | 'cards' | 'grid' | 'timeline';
@@ -276,7 +278,9 @@ export type AuditEventCategory =
   | 'auto_system_update'
   | 'core_manual_update'
   | 'filesystem_change'
-  | 'bot_protection';
+  | 'bot_protection'
+  | 'auth_security'
+  | 'wp_hide_shield';
 
 export type WpUserRole =
   | 'administrator'
@@ -398,6 +402,124 @@ export interface CaptchaConfig {
   };
 }
 
+// ============================================================================
+// v0.7.0: 10. Hitelesítés Modul (2FA TOTP, Időszinkron, Passkey, E-mail OTP,
+// Offline Mentett Kódok, Frissítés-védelem, Rang Mátrix, Shortcode, IP Whitelist)
+// ============================================================================
+
+export type AuthMethodId = 'totp' | 'passkey' | 'email' | 'offline';
+export type RoleAuthPolicy = 'required' | 'optional' | 'disabled';
+
+export type RoleAuthMatrix = Record<WpUserRole, Record<AuthMethodId, RoleAuthPolicy>>;
+
+export interface PasskeyCredentialItem {
+  id: string;
+  label: string;
+  deviceType: string;
+  createdAt: string;
+  lastUsedAt: string;
+  credentialIdPreview: string;
+}
+
+export interface OfflineSavedPasswordItem {
+  id: string;
+  codePreview: string;
+  passwordHash: string;
+  label: string;
+  createdAt: string;
+  used: boolean;
+}
+
+export interface AuthConfig {
+  enabled: boolean;
+  // 1. Hitelesítő szolgáltatások (2FA TOTP, Passkey, E-mail, Offline mentett jelszó/kód)
+  totpEnabled: boolean;
+  totpIssuer: string;
+  totpSecretKey: string;
+  totpDigits: 6;
+  totpPeriodSeconds: 30;
+  passkeyEnabled: boolean;
+  passkeyRpId: string;
+  passkeyUserVerification: 'required' | 'preferred';
+  passkeyCredentials: PasskeyCredentialItem[];
+  emailAuthEnabled: boolean;
+  emailOtpExpiryMinutes: number;
+  offlinePasswordsEnabled: boolean;
+  offlineSavedItems: OfflineSavedPasswordItem[];
+  // 2. Szerver és kliens idő elcsúszás korrekció & készülék szinkronizálás
+  timeDriftCorrectionEnabled: boolean;
+  timeOffsetSeconds: number; // +/- másodperc eltolás a szerver és kliens között
+  manualServerTimeIso: string; // Manuálisan beállított pontos dátum és idő (YYYY-MM-DD HH:mm:ss)
+  lastSyncedWithDeviceAt: string;
+  toleranceWindows: number; // +/- hány 30mp-es ablakot fogadjon el (1..4)
+  // 3. Frissítés-biztos adattárolás (Plugin update során nem vesznek el a kódok)
+  preserveCredentialsOnUpdate: boolean;
+  storageSchemaVersion: string;
+  lastBackupSnapshotAt: string;
+  // 4. Rangonként (szerepkörönként) külön meghatározható szabályok (Kötelező / Opcionális / Tiltott)
+  roleMatrix: RoleAuthMatrix;
+  // 5. Shortcode alapú frontend önkiszolgáló felület (wp-admin belépés nélkül)
+  enableFrontendShortcode: boolean;
+  shortcodeTag: string; // '[wtk_auth_manager]'
+  shortcodePageSlug: string;
+  allowUserMethodSwitch: boolean;
+  // 6. Fehér listás IP címek (nem kéri a hitelesítő használatát)
+  whitelistedIps: string[];
+  showSidebarAuthWidget: boolean;
+}
+
+// ============================================================================
+// v0.7.0: 11. WP Rejtés Modul (URL álcázás, Egyéni Login/Shortcode, AJAX Buborék
+// Login, Csak Bejelentkezettek Mód forráskód-védelemmel, Felhasználónév/E-mail
+// elrejtés, Titkosított Mesterjelszó admin betekintéssel és IP Fehérlistával)
+// ============================================================================
+
+export type BubblePosition = 'bottom-right' | 'bottom-left';
+
+export interface WpHideConfig {
+  enabled: boolean;
+  // 1. WordPress URL-ek és ujjlenyomatok elrejtése robotok elől
+  hideWpPaths: boolean;
+  customContentSlug: string; // pl. 'assets-media' (wp-content helyett)
+  customIncludesSlug: string; // pl. 'core-lib' (wp-includes helyett)
+  customUploadsSlug: string; // pl. 'files'
+  hideWpJsonEndpoint: boolean;
+  customRestPrefix: string; // pl. 'api-portal' (wp-json helyett)
+  stripWpVersionMeta: boolean;
+  blockAuthorScanning: boolean;
+  blockReadmeAndLicense: boolean;
+  // 2. wp-login.php és wp-admin elrejtése + saját URL vagy Shortcode
+  hideDefaultLoginAndAdmin: boolean;
+  customLoginSlug: string; // pl. 'kapu-belepes'
+  customAdminRedirectSlug: string; // pl. '404-nem-talalhato'
+  enableLoginShortcode: boolean;
+  loginShortcodeTag: string; // '[wtk_custom_login]'
+  // 3. AJAX alapú buborék bejelentkező widget az oldalon
+  enableAjaxBubbleLogin: boolean;
+  bubblePosition: BubblePosition;
+  bubbleButtonLabel: string;
+  bubbleTitle: string;
+  // 4. Kizárólag bejelentkezett felhasználók számára hozzáférési mód (teljes forráskód-védelemmel)
+  membersOnlyMode: boolean;
+  membersOnlyOverlayTitle: string;
+  membersOnlyOverlayMessage: string;
+  protectPagesPostsAndMedia: boolean;
+  stripHtmlSourceForGuests: boolean; // Kódból (view-source) sem olvasható ki a tartalom
+  // 5. Felhasználónevek és e-mail címek elrejtése kommentek és bejegyzések felületén
+  hideUsernamesAndEmails: boolean;
+  maskPostAuthorLogin: boolean;
+  maskCommentAuthorEmailAndLogin: boolean;
+  maskRestUsersEndpoint: boolean;
+  authorAliasPattern: string; // pl. 'Szerző #ID' vagy megjelenítési álnév
+  // 6. Egységes Mesterjelszó védelem (Titkosítva tárolva + Adminoknak megtekinthető + IP Fehérlista)
+  masterPasswordEnabled: boolean;
+  masterPasswordCipher: string; // AES-256 / HMAC-XOR titkosított tárolt érték (kódból nem olvasható ki)
+  masterPasswordHash: string; // SHA-256 ellenőrző hash
+  masterPasswordSessionHours: number;
+  masterPasswordWhitelistedIps: string[];
+  showSidebarHideBadge: boolean;
+}
+
 export interface PerformanceConfig {
   minifyAssets: boolean;
   deferScripts: boolean;
@@ -419,6 +541,8 @@ export interface ToolkitState {
   optimizer: OptimizerConfig;
   auditLog: AuditLogConfig;
   captcha: CaptchaConfig;
+  auth: AuthConfig;
+  wpHide: WpHideConfig;
   performance: PerformanceConfig;
   posts: ScheduledPostItem[];
 }

@@ -41,7 +41,8 @@ interface OverviewAndExportPanelProps {
       | 'gdpr'
       | 'banner'
       | 'optimizer'
-      | 'auditLog',
+      | 'auditLog'
+      | 'captcha',
     enabled: boolean
   ) => void;
   onUpdatePerformance: (patch: Partial<PerformanceConfig>) => void;
@@ -65,6 +66,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
     state.banner.enabled,
     state.optimizer.enabled,
     state.auditLog.enabled,
+    state.captcha.enabled,
   ].filter(Boolean).length;
 
   const perfMetrics = calculatePerformanceMetrics(state.performance, activeCount);
@@ -99,10 +101,10 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             <AndWrenchLogo size="lg" />
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                And ToolKit v0.5.2 — WordPress 7.1 &amp; PHP 8.0+ Forráskód (and-toolkit.php)
+                And ToolKit v0.6.0 — WordPress 7.1 &amp; PHP 8.0+ Forráskód (and-toolkit.php)
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong> · Verzió: <span className="font-mono">0.5.2</span> · Célkörnyezet: <span className="font-mono">WordPress 7.1 / PHP 8.0+ / GDPR / Optimalizáló &amp; Biztonsági Naplózás</span>
+                Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong> · Verzió: <span className="font-mono">0.6.0</span> · Célkörnyezet: <span className="font-mono">WordPress 7.1 / PHP 8.0+ / GDPR / Optimalizáló / Audit Napló &amp; Botvédelem</span>
               </p>
             </div>
           </div>
@@ -142,7 +144,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                WordPress 7.1, PHP 8.0, EU GDPR, Optimalizáló &amp; Biztonsági Audit Napló Jelentés (v0.5.2)
+                WordPress 7.1, PHP 8.0, EU GDPR, Optimalizáló, Audit Napló &amp; Botvédelem Jelentés (v0.6.0)
               </h3>
             </div>
             <span className="text-xs font-mono font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
@@ -179,7 +181,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
         <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
           <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Regisztrált WordPress 7.1 Rövidkódok (8 Shortcode), Filterek és REST Végpontok
+              Regisztrált WordPress 7.1 Rövidkódok (9 Shortcode), Filterek és REST Végpontok
             </h3>
           </div>
           <div className="overflow-x-auto">
@@ -305,6 +307,20 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                     Hook: wp_login, upgrader_process_complete, user_register
                   </td>
                 </tr>
+                <tr>
+                  <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-slate-100">
+                    09. Botvédelem: Google reCAPTCHA v3 &amp; Cloudflare Turnstile (v0.6.0)
+                  </td>
+                  <td className="py-2.5 px-3 font-mono text-blue-600 dark:text-blue-400">
+                    [wtk_captcha_badge]
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
+                    {state.captcha.provider === 'turnstile' ? 'Cloudflare Turnstile' : 'Google reCAPTCHA v3'} · Küszöb: &ge;{state.captcha.scoreThreshold.toFixed(2)}
+                  </td>
+                  <td className="py-2.5 px-4 font-mono text-slate-500">
+                    Hook: authenticate, registration_errors, preprocess_comment
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -320,14 +336,14 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                GitHub Közzététel Előkészítve (v0.5.2 Release)
+                GitHub Közzététel Előkészítve (v0.6.0 Release)
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                A gyökérkönyvtárban az önálló <code className="font-mono">/and-toolkit.php</code> és a látványos <code className="font-mono">/README.md</code> frissítve a <code className="font-mono">0.5.2</code> Biztonsági Audit Naplózás (.log/.txt/.csv) és Critical Only E-mail Értesítő modullal.
+                A gyökérkönyvtárban az önálló <code className="font-mono">/and-toolkit.php</code> és a látványos <code className="font-mono">/README.md</code> frissítve a <code className="font-mono">0.6.0</code> Google reCAPTCHA v3 &amp; Cloudflare Turnstile Botvédelem modullal.
               </p>
             </div>
             <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-              Git: main · tag: v0.5.2
+              Git: main · tag: v0.6.0
             </span>
           </div>
           <div className="p-3 rounded-md bg-slate-950 text-slate-200 text-xs font-mono overflow-x-auto space-y-1">
@@ -353,14 +369,14 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             </h2>
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-                Verzió: 0.5.2
+                Verzió: 0.6.0
               </span>
               <span aria-hidden="true">·</span>
               <span>
                 Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong>
               </span>
               <span aria-hidden="true">·</span>
-              <span>WordPress 7.1 Admin, GDPR, Info Banner, Optimalizáló &amp; Audit Napló</span>
+              <span>WordPress 7.1 Admin, GDPR, Info Banner, Optimalizáló, Audit Napló &amp; Botvédelem</span>
             </div>
           </div>
         </div>
@@ -714,6 +730,48 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Module 9: Bot Protection — Google reCAPTCHA v3 & Cloudflare Turnstile (New in v0.6.0) */}
+        <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4 md:col-span-2">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-md bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    09. Botvédelem: Google reCAPTCHA v3 &amp; Cloudflare Turnstile (v0.6.0)
+                  </h3>
+                  <div className="text-xs text-slate-500 font-mono">
+                    Aktív: {state.captcha.provider === 'turnstile' ? 'Cloudflare Turnstile' : 'Google reCAPTCHA v3'} · Küszöbérték: &ge; {state.captcha.scoreThreshold.toFixed(2)} · {state.captcha.stats.blockedBots} blokkolt bot
+                  </div>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                aria-label="Botvédelem modul engedélyezése"
+                checked={state.captcha.enabled}
+                onChange={(e) => onToggleModule('captcha', e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer"
+              />
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Opcionálisan választható Google reCAPTCHA v3 vagy Cloudflare Turnstile konfigurációs felület Site Key / Secret Key kezeléssel, finomhangolható észlelési küszöbértékkel (0.1–0.9), WordPress űrlapvédelemmel (belépés, regisztráció, kommentek, jelszó-emlékeztető) és élő bot-szimulátorral.
+            </p>
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span className="text-[11px] font-mono text-slate-400">[wtk_captcha_badge]</span>
+            <button
+              type="button"
+              onClick={() => onNavigateTab('captcha')}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Botvédelem &amp; Küszöbérték beállítása</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Fast Loading Time & Performance Optimization Panel */}
@@ -817,7 +875,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              WordPress 7.1, PHP 8.0+, EU GDPR, Optimalizáló &amp; Biztonsági Napló Audit (v0.5.2)
+              WordPress 7.1, PHP 8.0+, EU GDPR, Optimalizáló, Audit Napló &amp; Botvédelem Audit (v0.6.0)
             </h3>
           </div>
           <div className="flex items-center gap-3 text-xs">

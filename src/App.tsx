@@ -21,6 +21,7 @@ import {
   AuditLogEntry,
   BannerConfig,
   CalendarConfig,
+  CaptchaConfig,
   GdprCategoryId,
   GdprConfig,
   OptimizerConfig,
@@ -36,6 +37,7 @@ import {
   INITIAL_AUDIT_ENTRIES,
   INITIAL_STATE,
   calculatePerformanceMetrics,
+  evaluateCaptchaVerification,
 } from './utils/toolkitLogic';
 import { LiveSidebarPreview } from './components/LiveSidebarPreview';
 import { CalendarModulePanel } from './components/CalendarModulePanel';
@@ -46,17 +48,26 @@ import { GdprCookieModulePanel } from './components/GdprCookieModulePanel';
 import { InfoBannerModulePanel } from './components/InfoBannerModulePanel';
 import { OptimizerModulePanel } from './components/OptimizerModulePanel';
 import { AuditLogModulePanel } from './components/AuditLogModulePanel';
+import { CaptchaModulePanel } from './components/CaptchaModulePanel';
 import { OverviewAndExportPanel } from './components/OverviewAndExportPanel';
 import { AndWrenchLogo } from './components/AndWrenchLogo';
 
-const STORAGE_KEY = 'and_toolkit_wp_state_v052';
+const STORAGE_KEY = 'and_toolkit_wp_state_v060';
 
 export default function App() {
   const [state, setState] = useState<ToolkitState>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return { ...INITIAL_STATE, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        return {
+          ...INITIAL_STATE,
+          ...parsed,
+          captcha: {
+            ...INITIAL_STATE.captcha,
+            ...(parsed.captcha || {}),
+          },
+        };
       }
     } catch {
       // ignore storage error
@@ -154,6 +165,13 @@ export default function App() {
     }));
   };
 
+  const updateCaptcha = (patch: Partial<CaptchaConfig>) => {
+    setState((prev) => ({
+      ...prev,
+      captcha: { ...prev.captcha, ...patch },
+    }));
+  };
+
   const updatePerformance = (patch: Partial<PerformanceConfig>) => {
     setState((prev) => ({
       ...prev,
@@ -170,13 +188,86 @@ export default function App() {
       | 'gdpr'
       | 'banner'
       | 'optimizer'
-      | 'auditLog',
+      | 'auditLog'
+      | 'captcha',
     enabled: boolean
   ) => {
     setState((prev) => ({
       ...prev,
       [module]: { ...prev[module], enabled },
     }));
+  };
+
+  const handleSimulateCaptchaAttempt = (params: {
+    score: number;
+    tokenProvided: boolean;
+    isLoggedAdmin: boolean;
+    surfaceLabel: string;
+    actorLabel: string;
+  }) => {
+    const decision = evaluateCaptchaVerification(state.captcha, {
+      score: params.score,
+      tokenProvided: params.tokenProvided,
+      isLoggedAdmin: params.isLoggedAdmin,
+    });
+
+    const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const providerLabel =
+      state.captcha.provider === 'turnstile'
+        ? 'Cloudflare Turnstile'
+        : 'Google reCAPTCHA v3';
+
+    setState((prev) => {
+      const nextCaptchaStats = {
+        verifiedHumans:
+          prev.captcha.stats.verifiedHumans + (decision.allowed ? 1 : 0),
+        blockedBots:
+          prev.captcha.stats.blockedBots + (decision.allowed ? 0 : 1),
+        lastBlockedIp: decision.allowed
+          ? prev.captcha.stats.lastBlockedIp
+          : `${params.actorLabel} (Score: ${params.score.toFixed(2)})`,
+        lastBlockedScore: decision.allowed
+          ? prev.captcha.stats.lastBlockedScore
+          : params.score,
+      };
+
+      let nextAuditEntries = prev.auditLog.entries;
+      if (!decision.allowed && prev.captcha.logBlockedAttempts && prev.auditLog.enabled) {
+        const botEntry: AuditLogEntry = {
+          id: `log-bot-${Date.now()}`,
+          timestamp: nowStr,
+          category: 'bot_protection',
+          actorUser: params.actorLabel,
+          actorRole: 'subscriber',
+          actionLabel: `Bot kérés blokkolva (${providerLabel})`,
+          targetObject: params.surfaceLabel,
+          details: `${decision.reason} (Pontszám: ${params.score.toFixed(2)}, Küszöb: ${prev.captcha.scoreThreshold.toFixed(2)})`,
+          ipLocation: '185.220.101.44 (Botnet / Proxy)',
+          deviceBrowser: 'Headless HTTP Client',
+          isNewDeviceOrLocation: true,
+          severity: decision.severity,
+        };
+        nextAuditEntries = [botEntry, ...prev.auditLog.entries];
+      }
+
+      return {
+        ...prev,
+        captcha: {
+          ...prev.captcha,
+          stats: nextCaptchaStats,
+        },
+        auditLog: {
+          ...prev.auditLog,
+          entries: nextAuditEntries,
+        },
+      };
+    });
+
+    triggerSaveFeedback(
+      decision.allowed
+        ? `CAPTCHA ellenőrzés SIKERES (${providerLabel} · score: ${params.score.toFixed(2)} ≥ ${state.captcha.scoreThreshold.toFixed(2)})`
+        : `BOT TÁMADÁS BLOKKOLVA (${providerLabel} · score: ${params.score.toFixed(2)} < ${state.captcha.scoreThreshold.toFixed(2)})`
+    );
   };
 
   const handleAppendAuditLogEntry = (entry: AuditLogEntry, sendEmail = false) => {
@@ -508,7 +599,7 @@ export default function App() {
 
   const handleResetAll = () => {
     setState(INITIAL_STATE);
-    triggerSaveFeedback('Alapértelmezett And ToolKit v0.5.2 beállítások visszaállítva');
+    triggerSaveFeedback('Alapértelmezett And ToolKit v0.6.0 beállítások visszaállítva');
   };
 
   const activeModulesCount = [
@@ -520,6 +611,7 @@ export default function App() {
     state.banner.enabled,
     state.optimizer.enabled,
     state.auditLog.enabled,
+    state.captcha.enabled,
   ].filter(Boolean).length;
 
   const perf = calculatePerformanceMetrics(state.performance, activeModulesCount);
@@ -672,6 +764,20 @@ export default function App() {
           >
             Naplózás &amp; E-mail
           </a>
+          <a
+            href="#captcha"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveTab('captcha');
+            }}
+            className={`py-1 transition-colors whitespace-nowrap shrink-0 border-b-2 ${
+              activeTab === 'captcha'
+                ? 'border-blue-600 text-slate-900 dark:text-slate-100 font-semibold'
+                : 'border-transparent hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            Botvédelem
+          </a>
         </nav>
 
         {/* Zone 3: 1 Primary Action */}
@@ -699,14 +805,14 @@ export default function App() {
               And ToolKit
             </span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono tabular-nums">Verzió: 0.5.2</span>
+            <span className="font-mono tabular-nums">Verzió: 0.6.0</span>
             <span aria-hidden="true">·</span>
             <span>
               Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong>
             </span>
             <span aria-hidden="true">·</span>
             <span className="font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-              {activeModulesCount}/8 modul · Betöltés: {perf.estimatedLoadMs}ms ({perf.bundleSizeKb} KB)
+              {activeModulesCount}/9 modul · Betöltés: {perf.estimatedLoadMs}ms ({perf.bundleSizeKb} KB)
             </span>
           </div>
 
@@ -781,6 +887,7 @@ export default function App() {
             { id: 'banner' as const, label: 'Info Banner', icon: Megaphone },
             { id: 'optimizer' as const, label: 'Optimalizáló', icon: Zap },
             { id: 'audit-log' as const, label: 'Naplózás & E-mail', icon: Terminal },
+            { id: 'captcha' as const, label: 'Botvédelem', icon: ShieldCheck },
             { id: 'export' as const, label: 'PHP Kód', icon: Code2 },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -893,6 +1000,14 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'captcha' && (
+              <CaptchaModulePanel
+                config={state.captcha}
+                onChange={updateCaptcha}
+                onSimulateAttempt={handleSimulateCaptchaAttempt}
+              />
+            )}
+
             {activeTab === 'export' && (
               <OverviewAndExportPanel
                 mode="export"
@@ -925,7 +1040,7 @@ export default function App() {
       <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4">
         <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
           <span>
-            And ToolKit v0.5.2 · Készítő: galandras12+AI · Auditálva: WordPress 7.1, PHP 8.0+ &amp; EU GDPR
+            And ToolKit v0.6.0 · Készítő: galandras12+AI · Auditálva: WordPress 7.1, PHP 8.0+ &amp; EU GDPR
           </span>
           <div className="flex items-center gap-4">
             <button

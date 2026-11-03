@@ -88,6 +88,11 @@ const CATEGORY_META: Record<
     hook: 'wp_filesystem / file_integrity_check',
     badgeClass: 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/80 border-red-300 dark:border-red-800',
   },
+  bot_protection: {
+    label: 'Botvédelem / CAPTCHA',
+    hook: 'authenticate / registration_errors / preprocess_comment',
+    badgeClass: 'text-fuchsia-700 dark:text-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-950/80 border-fuchsia-300 dark:border-fuchsia-800',
+  },
 };
 
 const ROLE_LABELS: Record<WpUserRole, string> = {

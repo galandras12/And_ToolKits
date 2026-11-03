@@ -10,6 +10,7 @@ export type ActiveTab =
   | 'banner'
   | 'optimizer'
   | 'audit-log'
+  | 'captcha'
   | 'export';
 
 export type CalendarWidgetStyle = 'compact' | 'cards' | 'grid' | 'timeline';
@@ -274,7 +275,8 @@ export type AuditEventCategory =
   | 'user_lifecycle'
   | 'auto_system_update'
   | 'core_manual_update'
-  | 'filesystem_change';
+  | 'filesystem_change'
+  | 'bot_protection';
 
 export type WpUserRole =
   | 'administrator'
@@ -360,6 +362,42 @@ export interface AuditLogConfig {
   pendingUpdates: PendingUpdateItem[];
 }
 
+// ============================================================================
+// v0.6.0: 09. Botvédelem: Google reCAPTCHA v3 & Cloudflare Turnstile Modul
+// ============================================================================
+
+export type CaptchaProvider = 'recaptcha-v3' | 'turnstile';
+export type TurnstileWidgetMode = 'managed' | 'non-interactive' | 'invisible';
+export type TurnstileTheme = 'auto' | 'light' | 'dark';
+
+export interface CaptchaConfig {
+  enabled: boolean;
+  provider: CaptchaProvider;
+  recaptchaSiteKey: string;
+  recaptchaSecretKey: string;
+  turnstileSiteKey: string;
+  turnstileSecretKey: string;
+  // Észlelési érzékenység / küszöbérték (0.1 = megengedő ... 0.9 = maximális szigorúság)
+  scoreThreshold: number;
+  turnstileMode: TurnstileWidgetMode;
+  turnstileTheme: TurnstileTheme;
+  // Védett WordPress űrlapok és végpontok
+  protectLogin: boolean;
+  protectRegister: boolean;
+  protectLostPassword: boolean;
+  protectComments: boolean;
+  protectRestEndpoints: boolean;
+  bypassLoggedInAdmins: boolean;
+  logBlockedAttempts: boolean;
+  showSidebarBadge: boolean;
+  stats: {
+    verifiedHumans: number;
+    blockedBots: number;
+    lastBlockedIp: string;
+    lastBlockedScore: number;
+  };
+}
+
 export interface PerformanceConfig {
   minifyAssets: boolean;
   deferScripts: boolean;
@@ -380,6 +418,7 @@ export interface ToolkitState {
   banner: BannerConfig;
   optimizer: OptimizerConfig;
   auditLog: AuditLogConfig;
+  captcha: CaptchaConfig;
   performance: PerformanceConfig;
   posts: ScheduledPostItem[];
 }

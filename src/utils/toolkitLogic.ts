@@ -5,6 +5,7 @@ import {
   AuditLogEntry,
   AuditLogExportFormat,
   CalendarConfig,
+  CaptchaConfig,
   NumberFormatStyle,
   PendingUpdateItem,
   PerformanceConfig,
@@ -30,12 +31,12 @@ export const INITIAL_POSTS: ScheduledPostItem[] = [
   },
   {
     id: 'post-102',
-    title: 'And ToolKit v0.5.2 Kiadási Csomag és Audit Napló Dokumentáció (ZIP)',
+    title: 'And ToolKit v0.6.0 Kiadási Csomag és Botvédelmi Dokumentáció (ZIP)',
     date: '2026-11-09',
     time: '10:30',
     category: 'Kiadás',
     author: 'galandras12+AI',
-    excerpt: 'Teljes REST API végpontok, GDPR Cookie Consent Mode v2, Képoptimalizáló és Biztonsági Audit Napló modul (Critical Only szűrővel).',
+    excerpt: 'Google reCAPTCHA v3 és Cloudflare Turnstile botvédelem állítható észlelési küszöbbel, REST API végpontok, GDPR Consent Mode v2, Optimalizáló és Biztonsági Audit Napló.',
     postType: 'download',
     views: 5180,
     downloads: 1840,
@@ -423,11 +424,11 @@ export const INITIAL_STATE: ToolkitState = {
     sizePreset: 'standard',
     fontStyle: 'display-bold',
     animation: 'pulse-glow',
-    badgeText: 'ÚJ VERZIÓ · v0.5.2',
-    headline: 'And ToolKit v0.5.2: valódi audit napló adatbázissal, fájl-export és biztonsági javítások!',
-    subtext: 'Adatbázisban tárolt napló, valódi .log/.txt/.csv letöltés, javított nyilvános REST végpontok és működő GDPR süti-kezelő.',
-    ctaLabel: 'Naplózás megnyitása',
-    ctaUrl: '/kiadasok/and-toolkit-v0-5-2',
+    badgeText: 'ÚJ VERZIÓ · v0.6.0',
+    headline: 'And ToolKit v0.6.0: Google reCAPTCHA v3 & Cloudflare Turnstile Botvédelem állítható észlelési küszöbbel!',
+    subtext: 'Választható Google reCAPTCHA v3 vagy Cloudflare Turnstile védelem, egyéni Site/Secret kulcsok, 0.1–0.9 érzékenységi küszöb és Audit Napló integráció.',
+    ctaLabel: 'Botvédelem megnyitása',
+    ctaUrl: '/kiadasok/and-toolkit-v0-6-0',
     dismissible: true,
     showIcon: true,
     impressions: 36480,
@@ -547,6 +548,31 @@ export const INITIAL_STATE: ToolkitState = {
     emailsSentTotal: 19,
     entries: INITIAL_AUDIT_ENTRIES,
     pendingUpdates: INITIAL_PENDING_UPDATES,
+  },
+  captcha: {
+    enabled: true,
+    provider: 'recaptcha-v3',
+    recaptchaSiteKey: '6Lc_AndToolKit_WP71_SiteKey_Demo060',
+    recaptchaSecretKey: '',
+    turnstileSiteKey: '0x4AAAAAA_AndToolKit_Turnstile_Demo060',
+    turnstileSecretKey: '',
+    scoreThreshold: 0.5,
+    turnstileMode: 'managed',
+    turnstileTheme: 'auto',
+    protectLogin: true,
+    protectRegister: true,
+    protectLostPassword: true,
+    protectComments: true,
+    protectRestEndpoints: false,
+    bypassLoggedInAdmins: true,
+    logBlockedAttempts: true,
+    showSidebarBadge: true,
+    stats: {
+      verifiedHumans: 1842,
+      blockedBots: 127,
+      lastBlockedIp: '185.220.101.44 (Tor Exit / Botnet)',
+      lastBlockedScore: 0.15,
+    },
   },
   performance: {
     minifyAssets: true,
@@ -761,7 +787,7 @@ export function formatAuditLogsForExport(
   if (format === 'txt') {
     const banner = [
       '================================================================================',
-      'AND TOOLKIT v0.5.2 — WORDPRESS 7.1 BIZTONSÁGI ÉS ESEMÉNYNAPLÓ (.TXT EXPORT)',
+      'AND TOOLKIT v0.6.0 — WORDPRESS 7.1 BIZTONSÁGI ÉS ESEMÉNYNAPLÓ (.TXT EXPORT)',
       `Generálva: 2026-11-03 · Bejegyzések száma: ${entries.length}`,
       '================================================================================',
       '',
@@ -988,8 +1014,8 @@ export function buildUpdateNotificationEmailPreview(config: AuditLogConfig): {
   );
 
   const subject = config.criticalOnlyEmails
-    ? `[And ToolKit v0.5.2 · CRITICAL ONLY] Kritikus WP Mag Frissítés & Fájlrendszer Riasztás (${filtered.length} mag frissítés)`
-    : `[And ToolKit v0.5.2] WordPress Frissítési Értesítő (${filtered.length} komponens) & Napi Összefoglaló (${config.dailyDigestTime})`;
+    ? `[And ToolKit v0.6.0 · CRITICAL ONLY] Kritikus WP Mag Frissítés & Fájlrendszer Riasztás (${filtered.length} mag frissítés)`
+    : `[And ToolKit v0.6.0] WordPress Frissítési Értesítő (${filtered.length} komponens) & Napi Összefoglaló (${config.dailyDigestTime})`;
 
   const body = [
     `Címzett: ${config.recipientEmail || '(webhely admin e-mail címe)'}`,
@@ -1023,13 +1049,199 @@ export function buildUpdateNotificationEmailPreview(config: AuditLogConfig): {
             : ['• Az elmúlt 24 órában nem történt automatikus háttérfrissítés.']),
         ]),
     '------------------------------------------------------------------------',
-    'And ToolKit v0.5.1 · WordPress 7.1 Biztonsági Napló & E-mail Értesítő Modul',
+    'And ToolKit v0.6.0 · WordPress 7.1 Biztonsági Napló & E-mail Értesítő Modul',
   ].join('\n');
 
   return {
     subject,
     body,
     includedCount: filtered.length,
+  };
+}
+
+/**
+ * v0.6.0: Describe CAPTCHA detection sensitivity threshold (0.1 – 0.9)
+ */
+export function getCaptchaSensitivityLabel(threshold: number): {
+  label: string;
+  description: string;
+  badgeTone: 'emerald' | 'blue' | 'amber' | 'rose';
+} {
+  const clamped = Math.max(0.1, Math.min(0.9, Number(threshold.toFixed(2))));
+  if (clamped <= 0.35) {
+    return {
+      label: 'Megengedő (Alacsony szigorúság)',
+      description: 'Csak az egyértelműen automatizált spam robotokat (score < 0.3) blokkolja, minimális téves riasztás mellett.',
+      badgeTone: 'emerald',
+    };
+  }
+  if (clamped <= 0.55) {
+    return {
+      label: 'Kiegyensúlyozott · Ajánlott',
+      description: 'Ideális védelem WordPress 7.1 bejelentkezési és hozzászólási űrlapokhoz (score ≥ 0.5 engedélyezve).',
+      badgeTone: 'blue',
+    };
+  }
+  if (clamped <= 0.75) {
+    return {
+      label: 'Szigorú védelem (Emelt biztonság)',
+      description: 'Kiszűri a gyanús viselkedésű, fejlett headless böngészős botokat is (score < 0.7 blokkolva).',
+      badgeTone: 'amber',
+    };
+  }
+  return {
+    label: 'Maximális védelem (Extrém szigorú)',
+    description: 'Kizárólag a magas megbízhatóságú (score ≥ 0.8–0.9) emberi munkameneteket engedi át kritikus végpontokon.',
+    badgeTone: 'rose',
+  };
+}
+
+/**
+ * v0.6.0: Validate Google reCAPTCHA v3 or Cloudflare Turnstile Site Key & Secret Key formats
+ */
+export function validateCaptchaKeys(
+  config: Pick<
+    CaptchaConfig,
+    | 'provider'
+    | 'recaptchaSiteKey'
+    | 'recaptchaSecretKey'
+    | 'turnstileSiteKey'
+    | 'turnstileSecretKey'
+  >
+): {
+  activeSiteKey: string;
+  activeSecretKey: string;
+  siteKeyValid: boolean;
+  secretKeyValid: boolean;
+  readyForProduction: boolean;
+  statusLabel: string;
+} {
+  const activeSiteKey = (
+    config.provider === 'turnstile' ? config.turnstileSiteKey : config.recaptchaSiteKey
+  ).trim();
+  const activeSecretKey = (
+    config.provider === 'turnstile' ? config.turnstileSecretKey : config.recaptchaSecretKey
+  ).trim();
+
+  const keyRegex = /^[A-Za-z0-9_.\-:]{12,100}$/;
+  const siteKeyValid = keyRegex.test(activeSiteKey);
+  const secretKeyValid = keyRegex.test(activeSecretKey);
+  const readyForProduction = siteKeyValid && secretKeyValid;
+
+  let statusLabel = 'Hiányzó Site Key és Secret Key';
+  if (readyForProduction) {
+    statusLabel =
+      config.provider === 'turnstile'
+        ? 'Cloudflare Turnstile kulcspár konfigurálva és érvényes'
+        : 'Google reCAPTCHA v3 kulcspár konfigurálva és érvényes';
+  } else if (siteKeyValid && !secretKeyValid) {
+    statusLabel = 'Site Key beállítva · Secret Key megadása szükséges a szerveroldali siteverify ellenőrzéshez';
+  } else if (!siteKeyValid && secretKeyValid) {
+    statusLabel = 'Secret Key beállítva · Érvényes Site Key megadása szükséges';
+  }
+
+  return {
+    activeSiteKey,
+    activeSecretKey,
+    siteKeyValid,
+    secretKeyValid,
+    readyForProduction,
+    statusLabel,
+  };
+}
+
+/**
+ * v0.6.0: Evaluate a simulated or incoming CAPTCHA / bot detection request against scoreThreshold
+ */
+export function evaluateCaptchaVerification(
+  config: CaptchaConfig,
+  input: {
+    score: number;
+    tokenProvided?: boolean;
+    isLoggedAdmin?: boolean;
+  }
+): {
+  allowed: boolean;
+  effectiveThreshold: number;
+  normalizedScore: number;
+  providerLabel: string;
+  riskLevel: 'low' | 'medium' | 'high';
+  severity: 'info' | 'warning' | 'critical';
+  reason: string;
+} {
+  const effectiveThreshold = Math.max(
+    0.1,
+    Math.min(0.9, Number(config.scoreThreshold.toFixed(2)))
+  );
+  const normalizedScore = Math.max(0, Math.min(1, Number(input.score.toFixed(2))));
+  const providerLabel =
+    config.provider === 'turnstile' ? 'Cloudflare Turnstile' : 'Google reCAPTCHA v3';
+
+  const riskLevel: 'low' | 'medium' | 'high' =
+    normalizedScore >= 0.7 ? 'low' : normalizedScore >= 0.4 ? 'medium' : 'high';
+
+  if (!config.enabled) {
+    return {
+      allowed: true,
+      effectiveThreshold,
+      normalizedScore,
+      providerLabel,
+      riskLevel,
+      severity: 'info',
+      reason: 'A Botvédelem (CAPTCHA) modul jelenleg ki van kapcsolva.',
+    };
+  }
+
+  if (config.bypassLoggedInAdmins && input.isLoggedAdmin) {
+    return {
+      allowed: true,
+      effectiveThreshold,
+      normalizedScore,
+      providerLabel,
+      riskLevel: 'low',
+      severity: 'info',
+      reason: 'Bejelentkezett WordPress adminisztrátor kihagyva (Admin Bypass aktív).',
+    };
+  }
+
+  if (input.tokenProvided === false) {
+    return {
+      allowed: false,
+      effectiveThreshold,
+      normalizedScore: 0,
+      providerLabel,
+      riskLevel: 'high',
+      severity: 'critical',
+      reason: `${providerLabel}: Hiányzó válasz-token (missing-input-response) — a kérés blokkolva.`,
+    };
+  }
+
+  const allowed = normalizedScore >= effectiveThreshold;
+
+  if (allowed) {
+    return {
+      allowed: true,
+      effectiveThreshold,
+      normalizedScore,
+      providerLabel,
+      riskLevel,
+      severity: 'info',
+      reason: `${providerLabel} ellenőrzés sikeres: észlelt pontszám (${normalizedScore.toFixed(
+        2
+      )}) eléri a beállított küszöbértéket (${effectiveThreshold.toFixed(2)}).`,
+    };
+  }
+
+  return {
+    allowed: false,
+    effectiveThreshold,
+    normalizedScore,
+    providerLabel,
+    riskLevel,
+    severity: normalizedScore < 0.25 ? 'critical' : 'warning',
+    reason: `${providerLabel} blokkolta a kérést: észlelt pontszám (${normalizedScore.toFixed(
+      2
+    )}) alacsonyabb a biztonsági küszöbértéknél (${effectiveThreshold.toFixed(2)}).`,
   };
 }
 
@@ -1070,6 +1282,11 @@ function phpBool(value: boolean): string {
 
 function phpInt(value: number, fallback = 0): string {
   return String(Number.isFinite(value) ? Math.trunc(value) : fallback);
+}
+
+function phpFloat(value: number, fallback = 0.5): string {
+  const num = Number.isFinite(value) ? Math.max(0.1, Math.min(0.9, value)) : fallback;
+  return String(Number(num.toFixed(2)));
 }
 
 function phpList(items: string[]): string {
@@ -1181,6 +1398,24 @@ export function buildPluginDefaultsPhp(state: ToolkitState): string {
       L('daily_digest_time', phpStr(state.auditLog.dailyDigestTime)),
       L('retention_days', '90'),
     ]),
+    group('captcha', [
+      L('enabled', phpBool(state.captcha.enabled), 25),
+      L('provider', phpStr(state.captcha.provider), 25),
+      L('recaptcha_site_key', phpStr(state.captcha.recaptchaSiteKey), 25),
+      L('recaptcha_secret_key', phpStr(state.captcha.recaptchaSecretKey), 25),
+      L('turnstile_site_key', phpStr(state.captcha.turnstileSiteKey), 25),
+      L('turnstile_secret_key', phpStr(state.captcha.turnstileSecretKey), 25),
+      L('score_threshold', phpFloat(state.captcha.scoreThreshold, 0.5), 25),
+      L('turnstile_mode', phpStr(state.captcha.turnstileMode), 25),
+      L('turnstile_theme', phpStr(state.captcha.turnstileTheme), 25),
+      L('protect_login', phpBool(state.captcha.protectLogin), 25),
+      L('protect_register', phpBool(state.captcha.protectRegister), 25),
+      L('protect_lost_password', phpBool(state.captcha.protectLostPassword), 25),
+      L('protect_comments', phpBool(state.captcha.protectComments), 25),
+      L('protect_rest_endpoints', phpBool(state.captcha.protectRestEndpoints), 25),
+      L('bypass_logged_in_admins', phpBool(state.captcha.bypassLoggedInAdmins), 25),
+      L('log_blocked_attempts', phpBool(state.captcha.logBlockedAttempts), 25),
+    ]),
     group('performance', [
       L('defer_scripts', phpBool(state.performance.deferScripts)),
       L('cache_ttl_mins', phpInt(Math.max(1, state.performance.objectCacheTtlMinutes), 60)),
@@ -1203,7 +1438,7 @@ export interface AuditCheckItem {
 }
 
 /**
- * Automated static code & configuration audit verifying compatibility with WordPress 7.1, PHP 8.0+, EU GDPR, Info Banner, v0.4.0 Optimizer & v0.5.0 Security Audit Log requirements
+ * Automated static code & configuration audit verifying compatibility with WordPress 7.1, PHP 8.0+, EU GDPR, Info Banner, v0.4.0 Optimizer, v0.5.x Security Audit Log & v0.6.0 Bot Protection requirements
  */
 export function auditWordPressPhpCompatibility(
   phpCode: string,
@@ -1229,7 +1464,10 @@ export function auditWordPressPhpCompatibility(
     'print_consent_mode_defaults', 'render_calendar_widget', 'render_search_widget',
     'render_social_widget', 'render_stats_widget', 'render_cookie_consent_widget',
     'render_info_banner_shortcode', 'render_speed_badge_shortcode',
-    'render_security_badge_shortcode', 'render_global_info_banner', 'render_gdpr_footer_banner',
+    'render_security_badge_shortcode', 'enqueue_captcha_login_assets', 'render_captcha_field',
+    'verify_captcha_token', 'verify_login_captcha', 'verify_registration_captcha',
+    'verify_lostpassword_captcha', 'verify_comment_captcha', 'render_captcha_badge_shortcode',
+    'render_global_info_banner', 'render_gdpr_footer_banner',
     'register_rest_routes', 'handle_ajax_search', 'increment_download_counter',
     'increment_visit_counter', 'handle_cookie_consent', 'handle_system_optimization',
     'handle_audit_log_export',
@@ -1262,12 +1500,12 @@ export function auditWordPressPhpCompatibility(
       category: 'PHP 8.0+',
       title: 'PHP 8.0 match kifejezések és verzió-konstans',
       description:
-        'A belépési értesítő, a banner hatókör és a beállítás-szanitizálás típusbiztos match () kifejezést használ; VERSION = 0.5.2.',
+        'A belépési értesítő, a banner hatókör és a beállítás-szanitizálás típusbiztos match () kifejezést használ; VERSION = 0.6.0.',
       passed: has(
         "match ( $audit['login_email_scope'] )",
         "match ( $config['visibility_scope'] )",
         'match ( $type )',
-        "public const VERSION     = '0.5.2';"
+        "public const VERSION     = '0.6.0';"
       ),
     },
     {
@@ -1275,10 +1513,10 @@ export function auditWordPressPhpCompatibility(
       category: 'WordPress 7.1',
       title: 'WordPress fejléc és metaadat (Requires at least: 6.3)',
       description:
-        'Plugin Name, Version: 0.5.2, Requires at least: 6.3 (script strategy API), Requires PHP, Tested up to, Author, License URI és Domain Path.',
+        'Plugin Name, Version: 0.6.0, Requires at least: 6.3 (script strategy API), Requires PHP, Tested up to, Author, License URI és Domain Path.',
       passed: has(
         'Plugin Name:       And ToolKit',
-        'Version:           0.5.2',
+        'Version:           0.6.0',
         'Requires at least: 6.3',
         'Tested up to:      7.1',
         'Author:            galandras12+AI',
@@ -1290,7 +1528,7 @@ export function auditWordPressPhpCompatibility(
       id: 'wp71-hook-callbacks',
       category: 'WordPress 7.1',
       title: 'Minden regisztrált hook, rövidkód és REST végpont implementálva',
-      description: `Mind az ${requiredMethods.length} publikus metódus megtalálható, és a hook-regisztrációk (activation/deactivation/uninstall, cron, 8 rövidkód, 6 REST útvonal) jelen vannak.`,
+      description: `Mind a(z) ${requiredMethods.length} publikus metódus megtalálható, és a hook-regisztrációk (activation/deactivation/uninstall, cron, 9 rövidkód, 6 REST útvonal) jelen vannak.`,
       passed:
         allMethodsImplemented &&
         has(
@@ -1298,7 +1536,8 @@ export function auditWordPressPhpCompatibility(
           'register_deactivation_hook(',
           'register_uninstall_hook(',
           "add_action( self::CRON_HOOK",
-          "add_shortcode( 'wtk_security_badge'"
+          "add_shortcode( 'wtk_security_badge'",
+          "add_shortcode( 'wtk_captcha_badge'"
         ) &&
         ['/search', '/track-download', '/track-visit', '/cookie-consent', '/optimize', '/audit-export'].every(
           (route) => phpCode.includes(`'${route}'`)
@@ -1339,6 +1578,27 @@ export function auditWordPressPhpCompatibility(
           'check_available_updates',
           'maybe_send_daily_digest'
         ) && !phpCode.includes('@gmail.com'),
+    },
+    {
+      id: 'captcha-bot-protection',
+      category: 'Biztonság',
+      title: 'Botvédelem: Google reCAPTCHA v3 & Cloudflare Turnstile (állítható küszöb)',
+      description:
+        'Választható Google reCAPTCHA v3 és Cloudflare Turnstile siteverify ellenőrzés (wp_remote_post), 0.1–0.9 észlelési küszöb (score_threshold), védett login/regisztráció/jelszó/komment horgok és Audit Napló integráció.',
+      passed:
+        has(
+          'https://www.google.com/recaptcha/api/siteverify',
+          'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+          'verify_captcha_token(',
+          "add_filter( 'authenticate'",
+          "add_filter( 'registration_errors'",
+          "add_action( 'lostpassword_post'",
+          "add_filter( 'preprocess_comment'",
+          "'score_threshold'",
+          "'bot_protection'"
+        ) &&
+        state.captcha.scoreThreshold >= 0.1 &&
+        state.captcha.scoreThreshold <= 0.9,
     },
     {
       id: 'rest-search-safe',

@@ -2,18 +2,19 @@
 
 # 🔧 `&` And ToolKit — WordPress 7.1 Admin & Widget Studio
 
-### Moduláris Oldalsáv Widgetek · Élő AJAX Kereső · Közösségi Megosztó · Analitika · EU GDPR Cookie · Állandó Információs Banner · Kép/Upload/Lazy-Load Optimalizáló · Biztonsági Audit Napló & E-mail Értesítő
+### Moduláris Oldalsáv Widgetek · Élő AJAX Kereső · Közösségi Megosztó · Analitika · EU GDPR Cookie · Állandó Információs Banner · Kép/Upload/Lazy-Load Optimalizáló · Biztonsági Audit Napló & E-mail · Botvédelem (Google reCAPTCHA v3 & Cloudflare Turnstile)
 
-![Version](https://img.shields.io/badge/Verzi%C3%B3-0.5.2-2563EB?style=for-the-badge&logo=semanticrelease&logoColor=white)
+![Version](https://img.shields.io/badge/Verzi%C3%B3-0.6.0-2563EB?style=for-the-badge&logo=semanticrelease&logoColor=white)
 ![WordPress](https://img.shields.io/badge/WordPress-7.1%20Ready-21759B?style=for-the-badge&logo=wordpress&logoColor=white)
 ![PHP](https://img.shields.io/badge/PHP-8.0%2B%20Strict-777BB4?style=for-the-badge&logo=php&logoColor=white)
 ![GDPR](https://img.shields.io/badge/EU%20GDPR-Consent%20Mode%20v2-10B981?style=for-the-badge&logo=shield&logoColor=white)
+![CAPTCHA](https://img.shields.io/badge/Botv%C3%A9delem-reCAPTCHA%20v3%20%7C%20Turnstile-059669?style=for-the-badge&logo=cloudflare&logoColor=white)
 ![AuditLog](https://img.shields.io/badge/Audit%20Log-.LOG%20%7C%20.TXT%20%7C%20.CSV-F59E0B?style=for-the-badge&logo=databricks&logoColor=white)
 ![Author](https://img.shields.io/badge/K%C3%A9sz%C3%ADt%C5%91-galandras12%2BAI-0F172A?style=for-the-badge)
 
 ---
 
-**Egyetlen fájlból telepíthető, Zero-jQuery WordPress bővítmény, amely 8 frontend, teljesítmény-optimalizáló, biztonsági naplózó és adminisztrációs modult egyesít. A beállítások a WordPress admin felületen mentődnek; a React alapú Studio élő előnézetet és PHP-exportot ad.**
+**Egyetlen fájlból telepíthető, Zero-jQuery WordPress bővítmény, amely 9 frontend, teljesítmény-optimalizáló, biztonsági naplózó, botvédelmi (Google reCAPTCHA v3 / Cloudflare Turnstile) és adminisztrációs modult egyesít. A beállítások a WordPress admin felületen mentődnek; a React alapú Studio élő előnézetet és PHP-exportot ad.**
 
 </div>
 
@@ -21,22 +22,23 @@
 
 ## ✨ Miért az And ToolKit?
 
-| Jellemző | Hagyományos WordPress Bővítmények (8 külön plugin) | **🔧 `&` And ToolKit (`v0.5.2`)** |
+| Jellemző | Hagyományos WordPress Bővítmények (9 külön plugin) | **🔧 `&` And ToolKit (`v0.6.0`)** |
 | :--- | :--- | :--- |
 | **Függőségek** | jQuery + nehéz külső ikonfontok (`180+ KB`) | **Zero-jQuery · beágyazott Vanilla JS és CSS, külső asset nélkül** |
-| **Adminisztráció** | 8 különálló, eltérő stílusú beállítóoldal | **Egy WP beállítóoldal (Settings API) + Studio előnézet** |
+| **Adminisztráció** | 9 különálló, eltérő stílusú beállítóoldal | **Egy WP beállítóoldal (Settings API) + Studio előnézet** |
 | **Kép & Sebesség** | Fizetős külső API kvóták | **WebP/AVIF kimeneti formátum (ha a szerver támogatja), tömörítési minőség, Lazy Load, opcionális oldal-gyorsítótár** |
 | **Biztonsági Napló** | Nehéz biztonsági csomagok | **Adatbázisban tárolt audit napló (`.log`, `.txt`, `.csv` export) + Critical Only e-mail riasztó** |
+| **Botvédelem (v0.6.0)** | Külön CAPTCHA bővítmények | **Választható Google reCAPTCHA v3 vagy Cloudflare Turnstile + állítható észlelési küszöbérték (`0.1–0.9`)** |
 | **Téma támogatás** | Csak világos vagy sablonfüggő | **Natív Világos & Sötét mód (`Dark / Light`)** |
 | **PHP & WP Szabvány** | Vegyes örökölt kód | **`declare(strict_types=1)` · PHP 8.0 `match` · WP 6.3+ script `strategy`** |
 
 ---
 
-## 🧩 A 8 Fő Modul Felépítése (`v0.5.2`)
+## 🧩 A 9 Fő Modul Felépítése (`v0.6.0`)
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                     🔧 [&] And ToolKit v0.5.2 Mag (PHP 8.0+)                 │
+│                     🔧 [&] And ToolKit v0.6.0 Mag (PHP 8.0+)                 │
 ├───────────────────────┬──────────────────────────┬───────────────────────────┤
 │ 01. Esemény Naptár    │ 02. Élő AJAX Kereső      │ 03. Közösségi Megosztás   │
 │   [wtk_calendar]      │     [wtk_search]         │      [wtk_social]         │
@@ -49,14 +51,13 @@
 │ • Látogató & Letöltés │ • 4 Granuláris kategória │ • Főoldal / Minden oldal  │
 │ • Kompakt/Pontos szám │ • Google Consent Mode v2 │ • 6 Színséma + Egyedi HEX │
 │ • 7 napos aktivitás   │ • Szkript elő-blokkolás  │ • 3 Méret, 4 Betű, 5 Anim │
-├───────────────────────┴──────────────┬───────────┴───────────────────────────┤
-│ 07. Kép, Upload, Lazy Load & Cache   │ 08. Biztonsági Napló & E-mail (v0.5.2)│
-│        [wtk_speed_badge]             │        [wtk_security_badge]           │
-│ • WebP/AVIF tömörítés + átméretezés  │ • Belépés, Plugin, Téma, Poszt, Oldal │
-│ • Feltöltési limit (PHP-plafonig)    │ • Felhasználó létrehozás módja & csop.│
-│ • Teljes Lazy Load (img, iframe, bg) │ • Auto & WP Core frissítés naplózás   │
-│ • Opcionális oldal-gyorsítótár       │ • .LOG / .TXT / .CSV mentés + E-mail  │
-└──────────────────────────────────────┴───────────────────────────────────────┘
+├───────────────────────┼──────────────────────────┼───────────────────────────┤
+│ 07. Optimalizáló      │ 08. Biztonsági Napló     │ 09. Botvédelem (v0.6.0)   │
+│   [wtk_speed_badge]   │   [wtk_security_badge]   │   [wtk_captcha_badge]     │
+│ • WebP/AVIF + Resize  │ • 9 eseménykategória DB  │ • Google reCAPTCHA v3     │
+│ • Upload limit & Cache│ • .LOG / .TXT / .CSV     │ • Cloudflare Turnstile    │
+│ • Teljes Lazy Load    │ • Critical Only E-mail   │ • Küszöbérték: 0.1 – 0.9  │
+└───────────────────────┴──────────────────────────┴───────────────────────────┘
 ```
 
 ---
@@ -103,7 +104,7 @@
 
 ### 🔐 `08.` Biztonsági Audit Naplózás & E-mail Értesítés Modul (`[wtk_security_badge]`) — *v0.5.0–v0.5.2*
 - **Valódi napló adatbázisban** (`wp_and_toolkit_audit`): idő (UTC), kategória, súlyosság, felhasználó, szerepkör, IP, böngésző, cél és üzenet; beállítható megőrzési idő (alap: 90 nap, óránkénti WP-Cron törlés). Az admin oldalon az utolsó 100 esemény látható.
-- **Naplózott események**: bejelentkezés; plugin telepítés/frissítés/törlés (név + verzió); téma telepítés/frissítés/váltás; poszt és oldal létrehozás/szerkesztés/kuka/végleges törlés (`wp_after_insert_post`, `before_delete_post`); felhasználó létrehozás (admin felületen vagy regisztrációs űrlapon), szerepkör-váltás, törlés; automatikus plugin/téma frissítések; WordPress mag frissítés (aktorral); fájlrendszer-változás.
+- **Naplózott események**: bejelentkezés; plugin telepítés/frissítés/törlés (név + verzió); téma telepítés/frissítés/váltás; poszt és oldal létrehozás/szerkesztés/kuka/végleges törlés (`wp_after_insert_post`, `before_delete_post`); felhasználó létrehozás (admin felületen vagy regisztrációs űrlapon), szerepkör-váltás, törlés; automatikus plugin/téma frissítések; WordPress mag frissítés (aktorral); fájlrendszer-változás; botvédelem blokkolások (`bot_protection`).
 - **Fájlrendszer-integritás**: óránként SHA-256 ellenőrzés a `wp-config.php`, az aktív bővítmények fő fájlja és az aktív téma `functions.php` fájlján; frissítés/aktiválás után az alapállapot újraépül, váratlan módosításnál kritikus bejegyzés és riasztás készül.
 - **Export**: admin oldali letöltés (nonce + `manage_options`) valódi `.log` (syslog-szerű, egysoros), `.txt` vagy `.csv` fájlként (CSV képlet-injekció elleni védelemmel); a `GET /audit-export?format=...` JSON-ban adja vissza a tartalmat.
 - **Critical Only (`critical_only_emails`)**: minden e-mail egyetlen `notify()` függvényen megy át, ezért a kapcsoló mindenhol érvényesül: bekapcsolva kizárólag a **WordPress mag frissítés** és a **fájlrendszer-változás** küld levelet.
@@ -112,6 +113,14 @@
   - új eszközről vagy új IP-ről történő belépés riasztás kijelölt szerepkörökre (az első megfigyelt eszköz alapállapot, nem riasztás);
   - elérhető frissítés értesítő (`v7.1.0 → v7.1.1`), óránkénti ellenőrzéssel, verziónként egyszer;
   - napi összefoglaló az elmúlt 24 óra automatikus frissítéseiről a beállított időpont után, naponta egyszer.
+
+### 🤖 `09.` Botvédelem: Google reCAPTCHA v3 & Cloudflare Turnstile (`[wtk_captcha_badge]`) — *v0.6.0*
+- **Opcionálisan választható szolgáltató**:
+  - **Google reCAPTCHA v3 (`recaptcha-v3`)**: Kattintás és képrejtvény nélküli, láthatatlan kockázati pontszám (`0.0 – 1.0`) elemzés a `https://www.google.com/recaptcha/api/siteverify` végponton.
+  - **Cloudflare Turnstile (`turnstile`)**: Adatvédelem-barát, süti-mentes alternatíva (`managed`, `non-interactive` vagy `invisible` widget móddal és `auto` / `light` / `dark` témával) a `https://challenges.cloudflare.com/turnstile/v0/siteverify` végponton.
+- **Kulcskezelés**: Nyilvános **Site Key** és szerveroldali **Secret Key** megadása mindkét szolgáltatóhoz, formátum-ellenőrzéssel és 1-kattintásos teszt/demo kulcspár betöltővel.
+- **Állítható észlelési érzékenység / küszöbérték (`scoreThreshold`, `0.1 – 0.9`)**: Finomhangolható csúszka és 4 gyorsprofil (*`0.3` Megengedő*, *`0.5` Kiegyensúlyozott · Ajánlott*, *`0.7` Szigorú*, *`0.9` Maximális védelem*). A küszöbérték alatti (`$score < $threshold`) kéréseket a WordPress visszautasítja.
+- **Védett WordPress űrlapok**: Bejelentkezés (`authenticate`), Regisztráció (`registration_errors`), Elfelejtett jelszó (`lostpassword_post`), Hozzászólások (`preprocess_comment`), opcionális admin-mentesítéssel (`manage_options`) és automatikus Audit Napló rögzítéssel (`bot_protection`).
 
 ---
 
@@ -127,17 +136,18 @@
 | **06. Információs Banner** | `[wtk_info_banner]` | `wp_body_open` + hatókör |
 | **07. Optimalizáló & Speed** | `[wtk_speed_badge]` | `POST /optimize` (csak `manage_options`) |
 | **08. Biztonsági Audit Napló** | `[wtk_security_badge]` (publikus, konfigurációt nem fed fel) | `GET /audit-export?format=log\|txt\|csv` (csak `manage_options`) |
+| **09. Botvédelem (CAPTCHA)** | `[wtk_captcha_badge]` | `authenticate`, `registration_errors`, `lostpassword_post`, `preprocess_comment` |
 
 A rövidkódok a Szöveg widgetben, a Rövidkód blokkban és klasszikus témákban is használhatók. A beállítások az **And ToolKit** admin menüben (Settings API) szerkeszthetők; a rövidkód-attribútumok felülírják az adott használat beállítását.
 
 ---
 
-## ✅ Minőségbiztosítás (`v0.5.2`)
+## ✅ Minőségbiztosítás (`v0.6.0`)
 
 1. **Egy forrás, nincs elcsúszás**: a PHP sablon az `src/utils/pluginTemplate.ts`-ben van; a gyökér `and-toolkit.php` a `npm run build:plugin` parancsból készül, és egy teszt ellenőrzi, hogy bájtra egyezik a generátor kimenetével.
 2. **Generátor-biztonság**: a Studio minden szövege PHP-escape-en (`\` és `'`) megy át, ezért nem törheti el a generált kódot.
-3. **Statikus audit (12 ellenőrzés)**: a `auditWordPressPhpCompatibility` a valódi megvalósítás jeleit (DB-írás, nonce, rate limit, `has_password=false`, Consent Mode, WP szűrők) keresi, és a régi hibák visszatérését is jelzi (beégetett e-mail, nyers `get_posts()`, hiányzó asset); egy üres váz nem mehet át rajta.
-4. **Futtatott ellenőrzések**: `tsc --noEmit`, `vite build`, 15 egységteszt (`npm test`), `php -l`, valamint WP-stubokkal futtatott PHP füst-teszt (konfig-összefésülés, szanitizálás, Critical Only, export, banner, szkript-blokkolás).
+3. **Statikus audit (13 ellenőrzés)**: a `auditWordPressPhpCompatibility` a valódi megvalósítás jeleit (DB-írás, nonce, rate limit, `has_password=false`, Consent Mode, WP szűrők, Google reCAPTCHA v3 / Cloudflare Turnstile `siteverify`) keresi, és a régi hibák visszatérését is jelzi (beégetett e-mail, nyers `get_posts()`, hiányzó asset); egy üres váz nem mehet át rajta.
+4. **Futtatott ellenőrzések**: `tsc --noEmit`, `vite build`, 16 egységteszt (`npm test`), `php -l`, valamint WP-stubokkal futtatott PHP füst-teszt.
 5. **Nincs élő WordPress-teszt**: a bővítményt valódi WordPress 7.1 / PHP 8.x környezetben még ki kell próbálni; a `Tested up to: 7.1` fejléc ezt addig nem igazolja.
 
 ---
@@ -162,6 +172,10 @@ npm run build:plugin # and-toolkit.php újragenerálása a sablonból
 
 ## 📜 Verziótörténet (Changelog)
 
+- **`v0.6.0` (2026-11-03)** — **Botvédelem: Google reCAPTCHA v3 & Cloudflare Turnstile Modul (`[wtk_captcha_badge]`)**:
+  - **Választható szolgáltató**: Google reCAPTCHA v3 (láthatatlan score-alapú elemzés) vagy Cloudflare Turnstile (süti-mentes, adatvédelem-barát védelem `managed`, `non-interactive` és `invisible` móddal).
+  - **Kulcskezelés és Észlelési Küszöbérték**: Nyilvános Site Key és titkos Secret Key konfiguráció, valamint `0.1` és `0.9` között állítható bot-észlelési érzékenység (`scoreThreshold`) 4 gyorsprofillal és interaktív bot-szimulátorral.
+  - **WordPress Űrlapvédelem & Naplózás**: Bejelentkezési (`authenticate`), regisztrációs (`registration_errors`), elfelejtett jelszó (`lostpassword_post`) és hozzászólási (`preprocess_comment`) űrlapok szerveroldali `wp_remote_post()` ellenőrzése és automatikus `bot_protection` naplózás.
 - **`v0.5.2` (2026-11-03)** — **Biztonsági és működési javítócsomag (audit alapján)**:
   - **Biztonság**: a nyilvános `/search` többé nem ad vissza nyers `WP_Post` objektumot, jelszóvédett és ütemezett tartalmat; a számláló végpontok rate limitesek és validáltak; nincs beégetett e-mail cím (üresen az admin e-mail); a `[wtk_security_badge]` nem fed fel konfigurációt; CSV-injekció és log-forging elleni védelem; a generátor PHP-escape-el.
   - **Audit napló**: valódi adatbázistábla aktorral/IP-vel, valódi `.log/.txt/.csv` letöltés, fájlrendszer-integritás, elérhető-frissítés és napi összefoglaló WP-Cronnal, új eszköz riasztás; a Critical Only kapcsoló egy helyen érvényesül.

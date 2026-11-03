@@ -1309,6 +1309,49 @@ export const LiveSidebarPreview: React.FC<LiveSidebarPreviewProps> = ({
               )}
             </section>
           )}
+
+          {/* 8. BOT PROTECTION / CAPTCHA BADGE WIDGET ([wtk_captcha_badge] · v0.6.0) */}
+          {state.captcha.enabled && state.captcha.showSidebarBadge && (
+            <section
+              aria-label="Botvédelem és CAPTCHA Widget Előnézet"
+              className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-2.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {state.captcha.provider === 'turnstile'
+                      ? 'Cloudflare Turnstile'
+                      : 'Google reCAPTCHA v3'}
+                  </h3>
+                </div>
+                <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+                  [wtk_captcha_badge]
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 rounded bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                  <div className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    &ge; {state.captcha.scoreThreshold.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-slate-500">Küszöbérték</div>
+                </div>
+                <div className="p-2 rounded bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                  <div className="text-xs font-mono font-bold text-slate-900 dark:text-slate-100">
+                    {state.captcha.stats.verifiedHumans}
+                  </div>
+                  <div className="text-[10px] text-slate-500">Verifikált ember</div>
+                </div>
+                <div className="p-2 rounded bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                  <div className="text-xs font-mono font-bold text-rose-600 dark:text-rose-400">
+                    {state.captcha.stats.blockedBots}
+                  </div>
+                  <div className="text-[10px] text-slate-500">Blokkolt bot</div>
+                </div>
+              </div>
+            </section>
+          )}
         </div>
       </div>
 

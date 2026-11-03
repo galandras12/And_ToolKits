@@ -1,5 +1,5 @@
 /**
- * And ToolKit PHP plugin sablon (v0.5.2).
+ * And ToolKit PHP plugin sablon (v0.6.0).
  * A `/*{{DEFAULTS}}*\/` helyére kerülnek a Studio beállításai (alapértelmezett konfiguráció).
  * A gyökér and-toolkit.php ebből a sablonból és az INITIAL_STATE-ből generált – ne szerkeszd kézzel,
  * hanem módosítsd ezt a fájlt, majd futtasd: npm run build:plugin
@@ -10,8 +10,8 @@ export const PLUGIN_TEMPLATE = `<?php
 /**
  * Plugin Name:       And ToolKit
  * Plugin URI:        https://github.com/galandras12/And_ToolKits
- * Description:       WordPress adminisztrációs eszköztár: Esemény naptár, AJAX élő kereső, közösségi megosztó, látogatói/letöltési statisztika, GDPR süti-kezelő (Consent Mode v2), információs banner, kép/upload/lazy-load/cache optimalizáló, valamint biztonsági audit napló e-mail értesítővel (Critical Only szűrővel).
- * Version:           0.5.2
+ * Description:       WordPress adminisztrációs eszköztár: Esemény naptár, AJAX élő kereső, közösségi megosztó, látogatói/letöltési statisztika, GDPR süti-kezelő (Consent Mode v2), információs banner, kép/upload/lazy-load/cache optimalizáló, biztonsági audit napló e-mail értesítővel (Critical Only szűrővel), valamint Google reCAPTCHA v3 és Cloudflare Turnstile botvédelem.
+ * Version:           0.6.0
  * Requires at least: 6.3
  * Tested up to:      7.1
  * Requires PHP:      8.0
@@ -29,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class And_ToolKit_Plugin {
-    public const VERSION     = '0.5.2';
+    public const VERSION     = '0.6.0';
     public const AUTHOR      = 'galandras12+AI';
     public const WP_TARGET   = '7.1';
     public const PHP_TARGET  = '8.0';
@@ -89,6 +89,17 @@ final class And_ToolKit_Plugin {
         add_action( 'activated_plugin', [ __CLASS__, 'refresh_integrity_baseline' ] );
         add_action( 'deactivated_plugin', [ __CLASS__, 'refresh_integrity_baseline' ] );
 
+        // Botvédelem: Google reCAPTCHA v3 & Cloudflare Turnstile (v0.6.0)
+        add_action( 'login_enqueue_scripts', [ __CLASS__, 'enqueue_captcha_login_assets' ] );
+        add_action( 'login_form', [ __CLASS__, 'render_captcha_field' ] );
+        add_action( 'register_form', [ __CLASS__, 'render_captcha_field' ] );
+        add_action( 'lostpassword_form', [ __CLASS__, 'render_captcha_field' ] );
+        add_action( 'comment_form_after_fields', [ __CLASS__, 'render_captcha_field' ] );
+        add_filter( 'authenticate', [ __CLASS__, 'verify_login_captcha' ], 30, 3 );
+        add_filter( 'registration_errors', [ __CLASS__, 'verify_registration_captcha' ], 10, 3 );
+        add_action( 'lostpassword_post', [ __CLASS__, 'verify_lostpassword_captcha' ], 10, 1 );
+        add_filter( 'preprocess_comment', [ __CLASS__, 'verify_comment_captcha' ], 10, 1 );
+
         // Rövidkódok: Szövegvezérlő widgetek (Szöveg widget, Rövidkód blokk, klasszikus témák)
         add_shortcode( 'wtk_calendar', [ __CLASS__, 'render_calendar_widget' ] );
         add_shortcode( 'wtk_search', [ __CLASS__, 'render_search_widget' ] );
@@ -98,6 +109,7 @@ final class And_ToolKit_Plugin {
         add_shortcode( 'wtk_info_banner', [ __CLASS__, 'render_info_banner_shortcode' ] );
         add_shortcode( 'wtk_speed_badge', [ __CLASS__, 'render_speed_badge_shortcode' ] );
         add_shortcode( 'wtk_security_badge', [ __CLASS__, 'render_security_badge_shortcode' ] );
+        add_shortcode( 'wtk_captcha_badge', [ __CLASS__, 'render_captcha_badge_shortcode' ] );
     }
 
     public static function on_init(): void {
@@ -129,7 +141,7 @@ final class And_ToolKit_Plugin {
         wp_clear_scheduled_hook( self::CRON_HOOK );
         $wpdb->query( 'DROP TABLE IF EXISTS ' . $wpdb->prefix . 'and_toolkit_audit' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
         $wpdb->query( 'DROP TABLE IF EXISTS ' . $wpdb->prefix . 'and_toolkit_consent' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-        foreach ( [ self::OPTION_KEY, 'and_toolkit_db_version', 'and_toolkit_integrity', 'and_toolkit_notified_updates', 'and_toolkit_digest_last', 'and_toolkit_downloads_total', 'and_toolkit_visits_total', 'and_toolkit_visits_daily', 'and_toolkit_cache_gen', 'and_toolkit_optimize_last' ] as $option ) {
+        foreach ( [ self::OPTION_KEY, 'and_toolkit_db_version', 'and_toolkit_integrity', 'and_toolkit_notified_updates', 'and_toolkit_digest_last', 'and_toolkit_downloads_total', 'and_toolkit_visits_total', 'and_toolkit_visits_daily', 'and_toolkit_cache_gen', 'and_toolkit_optimize_last', 'and_toolkit_captcha_verified', 'and_toolkit_captcha_blocked' ] as $option ) {
             delete_option( $option );
         }
         delete_metadata( 'user', 0, 'and_toolkit_devices', '', true );
@@ -196,9 +208,12 @@ final class And_ToolKit_Plugin {
             'banner_anim'    => [ 'none' => 'Nincs', 'pulse-glow' => 'Pulzáló', 'slide-down' => 'Beúszó', 'shimmer' => 'Csillogó', 'marquee' => 'Futó' ],
             'convert_format' => [ 'original' => 'Eredeti', 'webp' => 'WebP', 'avif' => 'AVIF' ],
             'auto_schedule'  => [ 'realtime-upload' => 'Feltöltéskor', 'hourly-cron' => 'Óránként', 'daily-cron' => 'Naponta', 'manual-only' => 'Csak kézzel' ],
-            'export_format'  => [ 'log' => '.log', 'txt' => '.txt', 'csv' => '.csv' ],
-            'login_scope'    => [ 'all-users' => 'Minden felhasználó', 'editors-only' => 'Csak szerkesztők', 'admins-only' => 'Csak adminisztrátorok' ],
-            'roles'          => [ 'administrator' => 'Adminisztrátor', 'editor' => 'Szerkesztő', 'author' => 'Szerző', 'contributor' => 'Közreműködő', 'subscriber' => 'Feliratkozó' ],
+            'export_format'    => [ 'log' => '.log', 'txt' => '.txt', 'csv' => '.csv' ],
+            'login_scope'      => [ 'all-users' => 'Minden felhasználó', 'editors-only' => 'Csak szerkesztők', 'admins-only' => 'Csak adminisztrátorok' ],
+            'roles'            => [ 'administrator' => 'Adminisztrátor', 'editor' => 'Szerkesztő', 'author' => 'Szerző', 'contributor' => 'Közreműködő', 'subscriber' => 'Feliratkozó' ],
+            'captcha_provider' => [ 'recaptcha-v3' => 'Google reCAPTCHA v3 (Score alapú)', 'turnstile' => 'Cloudflare Turnstile (Adatvédelem-barát)' ],
+            'turnstile_mode'   => [ 'managed' => 'Managed (Adaptív)', 'non-interactive' => 'Non-Interactive', 'invisible' => 'Invisible (Láthatatlan)' ],
+            'turnstile_theme'  => [ 'auto' => 'Automatikus', 'light' => 'Világos', 'dark' => 'Sötét' ],
         ];
     }
 
@@ -301,6 +316,24 @@ final class And_ToolKit_Plugin {
                 'daily_digest_time'              => [ 'time', 'Összefoglaló időpontja (ÓÓ:PP)' ],
                 'retention_days'                 => [ 'int', 'Naplómegőrzés (nap)', [ 7, 730 ] ],
             ],
+            'captcha'     => [
+                'enabled'                 => [ 'bool', 'Botvédelem (CAPTCHA) engedélyezése' ],
+                'provider'                => [ 'select', 'Szolgáltató (Google reCAPTCHA v3 / Cloudflare Turnstile)', $o['captcha_provider'] ],
+                'recaptcha_site_key'      => [ 'text', 'Google reCAPTCHA v3 Site Key (Nyilvános kulcs)' ],
+                'recaptcha_secret_key'    => [ 'secret', 'Google reCAPTCHA v3 Secret Key (Titkos kulcs)' ],
+                'turnstile_site_key'      => [ 'text', 'Cloudflare Turnstile Site Key (Nyilvános kulcs)' ],
+                'turnstile_secret_key'    => [ 'secret', 'Cloudflare Turnstile Secret Key (Titkos kulcs)' ],
+                'score_threshold'         => [ 'float', 'Észlelési érzékenység / küszöbérték (0.1 – 0.9)', [ 0.1, 0.9 ] ],
+                'turnstile_mode'          => [ 'select', 'Turnstile widget mód', $o['turnstile_mode'] ],
+                'turnstile_theme'         => [ 'select', 'Turnstile színséma', $o['turnstile_theme'] ],
+                'protect_login'           => [ 'bool', 'Bejelentkezési űrlap védelme (wp-login.php)' ],
+                'protect_register'        => [ 'bool', 'Regisztrációs űrlap védelme' ],
+                'protect_lost_password'   => [ 'bool', 'Elfelejtett jelszó űrlap védelme' ],
+                'protect_comments'        => [ 'bool', 'Hozzászólási (komment) űrlap védelme' ],
+                'protect_rest_endpoints'  => [ 'bool', 'Nyilvános REST végpontok védelme' ],
+                'bypass_logged_in_admins' => [ 'bool', 'Bejelentkezett adminisztrátorok kihagyása' ],
+                'log_blocked_attempts'    => [ 'bool', 'Blokkolt bot-kísérletek rögzítése az Audit Naplóban' ],
+            ],
             'performance' => [
                 'defer_scripts'  => [ 'bool', 'Szkriptek defer betöltése' ],
                 'cache_ttl_mins' => [ 'int', 'Oldal-gyorsítótár élettartama (perc)', [ 1, 1440 ] ],
@@ -320,9 +353,11 @@ final class And_ToolKit_Plugin {
                 $out[ $group ][ $key ] = match ( $type ) {
                     'bool'   => ! empty( $raw ),
                     'text'   => is_scalar( $raw ) ? sanitize_text_field( (string) $raw ) : $current[ $group ][ $key ],
+                    'secret' => is_scalar( $raw ) ? ( '' !== trim( (string) $raw ) ? (string) preg_replace( '/[^A-Za-z0-9_\\-.:]/', '', trim( (string) $raw ) ) : '' ) : $current[ $group ][ $key ],
                     'email'  => is_scalar( $raw ) && is_email( sanitize_email( (string) $raw ) ) ? sanitize_email( (string) $raw ) : '',
                     'url'    => is_scalar( $raw ) ? esc_url_raw( trim( (string) $raw ) ) : $current[ $group ][ $key ],
                     'int'    => is_scalar( $raw ) ? max( (int) $def[2][0], min( (int) $def[2][1], (int) $raw ) ) : $current[ $group ][ $key ],
+                    'float'  => is_scalar( $raw ) ? round( max( (float) $def[2][0], min( (float) $def[2][1], (float) $raw ) ), 2 ) : $current[ $group ][ $key ],
                     'select' => is_scalar( $raw ) && array_key_exists( (string) $raw, $def[2] ) ? (string) $raw : $current[ $group ][ $key ],
                     'time'   => is_scalar( $raw ) && 1 === preg_match( '/^([01]\\d|2[0-3]):[0-5]\\d$/', (string) $raw ) ? (string) $raw : $current[ $group ][ $key ],
                     'hex'    => is_scalar( $raw ) && sanitize_hex_color( (string) $raw ) ? (string) sanitize_hex_color( (string) $raw ) : $current[ $group ][ $key ],
@@ -1131,6 +1166,12 @@ final class And_ToolKit_Plugin {
             case 'int':
                 echo '<input type="number" class="small-text" id="' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '" min="' . esc_attr( (string) $def[2][0] ) . '" max="' . esc_attr( (string) $def[2][1] ) . '" />';
                 break;
+            case 'float':
+                echo '<input type="number" step="0.05" class="small-text" id="' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '" min="' . esc_attr( (string) $def[2][0] ) . '" max="' . esc_attr( (string) $def[2][1] ) . '" />';
+                break;
+            case 'secret':
+                echo '<input type="password" class="regular-text" autocomplete="off" id="' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '" />';
+                break;
             case 'url':
                 echo '<input type="url" class="regular-text" id="' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '" />';
                 break;
@@ -1160,6 +1201,7 @@ final class And_ToolKit_Plugin {
             'banner'      => '06. Információs Banner',
             'optimizer'   => '07. Optimalizáló',
             'audit_log'   => '08. Biztonsági Audit Napló & E-mail',
+            'captcha'     => '09. Botvédelem: Google reCAPTCHA v3 & Cloudflare Turnstile',
             'performance' => 'Teljesítmény',
         ];
         echo '<div class="wrap" id="and-toolkit-admin-root" data-version="' . esc_attr( self::VERSION ) . '">';
@@ -1307,6 +1349,10 @@ final class And_ToolKit_Plugin {
         ];
         wp_add_inline_script( 'and-toolkit-frontend', 'window.ATK = ' . wp_json_encode( $js_config ) . ';', 'before' );
         wp_add_inline_script( 'and-toolkit-frontend', self::frontend_js() );
+
+        if ( is_singular() && comments_open() && $config['captcha']['protect_comments'] && ! self::captcha_should_bypass() ) {
+            self::enqueue_captcha_provider_script();
+        }
     }
 
     public static function print_consent_mode_defaults(): void {
@@ -1519,6 +1565,7 @@ if('IntersectionObserver' in window){var io=new IntersectionObserver(function(es
 
 /* ---------- Indítás ---------- */
 all('.atk-search').forEach(initSearch);
+all('.atk-recaptcha-token[data-sitekey]').forEach(function(inp){var sk=inp.getAttribute('data-sitekey');if(sk&&window.grecaptcha&&window.grecaptcha.ready){window.grecaptcha.ready(function(){window.grecaptcha.execute(sk,{action:'submit'}).then(function(tok){inp.value=tok;});});}});
 if(C.gdprOn){all('.atk-gdpr-cookie').forEach(buildBanner);syncBanners();all('[data-atk-open-consent]').forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();all('.atk-gdpr-cookie').forEach(function(b){b.classList.remove('atk-hidden');});});});activateScripts();}
 trackVisit();
 })();
@@ -1788,6 +1835,214 @@ JS;
         }
         // Publikus kimenet: nem árul el beállítást vagy konfigurációs részletet.
         return '<div class="atk-widget atk-security-badge"><span>' . esc_html( 'Védve: And ToolKit Security Audit v' . self::VERSION ) . '</span></div>';
+    }
+
+    // ========================================================================
+    // BOTVÉDELEM: GOOGLE RECAPTCHA V3 & CLOUDFLARE TURNSTILE (v0.6.0)
+    // ========================================================================
+
+    private static function captcha_active_keys(): array {
+        $cap      = self::get_config()['captcha'];
+        $provider = 'turnstile' === $cap['provider'] ? 'turnstile' : 'recaptcha-v3';
+        $site_key = 'turnstile' === $provider ? (string) $cap['turnstile_site_key'] : (string) $cap['recaptcha_site_key'];
+        $secret   = 'turnstile' === $provider ? (string) $cap['turnstile_secret_key'] : (string) $cap['recaptcha_secret_key'];
+        return [
+            'provider'   => $provider,
+            'site_key'   => trim( $site_key ),
+            'secret_key' => trim( $secret ),
+            'threshold'  => max( 0.1, min( 0.9, (float) $cap['score_threshold'] ) ),
+        ];
+    }
+
+    private static function captcha_should_bypass(): bool {
+        $cap = self::get_config()['captcha'];
+        if ( ! $cap['enabled'] ) {
+            return true;
+        }
+        if ( $cap['bypass_logged_in_admins'] && is_user_logged_in() && current_user_can( 'manage_options' ) ) {
+            return true;
+        }
+        $keys = self::captcha_active_keys();
+        return '' === $keys['site_key'] || '' === $keys['secret_key'];
+    }
+
+    private static function enqueue_captcha_provider_script(): void {
+        $keys = self::captcha_active_keys();
+        if ( 'turnstile' === $keys['provider'] ) {
+            wp_enqueue_script( 'atk-turnstile', 'https://challenges.cloudflare.com/turnstile/v0/api.js', [], null, true ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
+        } else {
+            wp_enqueue_script( 'atk-recaptcha-v3', 'https://www.google.com/recaptcha/api.js?render=' . rawurlencode( $keys['site_key'] ), [], null, true ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
+            wp_add_inline_script(
+                'atk-recaptcha-v3',
+                'document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll(".atk-recaptcha-token[data-sitekey]").forEach(function(i){var k=i.getAttribute("data-sitekey");if(k&&window.grecaptcha&&window.grecaptcha.ready){window.grecaptcha.ready(function(){window.grecaptcha.execute(k,{action:"submit"}).then(function(t){i.value=t;});});}});});'
+            );
+        }
+    }
+
+    public static function enqueue_captcha_login_assets(): void {
+        $cap = self::get_config()['captcha'];
+        if ( self::captcha_should_bypass() || ( ! $cap['protect_login'] && ! $cap['protect_register'] && ! $cap['protect_lost_password'] ) ) {
+            return;
+        }
+        self::enqueue_captcha_provider_script();
+    }
+
+    public static function render_captcha_field(): void {
+        if ( self::captcha_should_bypass() ) {
+            return;
+        }
+        $cap  = self::get_config()['captcha'];
+        $keys = self::captcha_active_keys();
+        if ( 'turnstile' === $keys['provider'] ) {
+            $mode  = self::pick( (string) $cap['turnstile_mode'], [ 'managed', 'non-interactive', 'invisible' ], 'managed' );
+            $theme = self::pick( (string) $cap['turnstile_theme'], [ 'auto', 'light', 'dark' ], 'auto' );
+            printf(
+                '<div class="cf-turnstile" data-sitekey="%s" data-appearance="%s" data-theme="%s" style="margin:10px 0"></div>',
+                esc_attr( $keys['site_key'] ),
+                esc_attr( $mode ),
+                esc_attr( $theme )
+            );
+            return;
+        }
+        printf(
+            '<input type="hidden" name="atk_captcha_token" class="atk-recaptcha-token" data-sitekey="%s" value="" />',
+            esc_attr( $keys['site_key'] )
+        );
+    }
+
+    public static function verify_captcha_token( string $token, string $expected_action = 'submit' ): array {
+        if ( self::captcha_should_bypass() ) {
+            return [ 'success' => true, 'score' => 1.0, 'provider' => 'bypass' ];
+        }
+        $cap   = self::get_config()['captcha'];
+        $keys  = self::captcha_active_keys();
+        $token = trim( $token );
+        if ( '' === $token ) {
+            self::increment_counter( 'and_toolkit_captcha_blocked' );
+            if ( $cap['log_blocked_attempts'] ) {
+                self::log_event( 'bot_protection', 'warning', sprintf( 'Botvédelem: hiányzó CAPTCHA token (%s, művelet: %s)', $keys['provider'], $expected_action ), $expected_action );
+            }
+            return [ 'success' => false, 'score' => 0.0, 'error' => 'missing-input-response' ];
+        }
+
+        $endpoint = 'turnstile' === $keys['provider']
+            ? 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
+            : 'https://www.google.com/recaptcha/api/siteverify';
+
+        $response = wp_remote_post(
+            $endpoint,
+            [
+                'timeout' => 8,
+                'body'    => [
+                    'secret'   => $keys['secret_key'],
+                    'response' => $token,
+                    'remoteip' => self::client_ip(),
+                ],
+            ]
+        );
+
+        if ( is_wp_error( $response ) ) {
+            return [ 'success' => false, 'score' => 0.0, 'error' => $response->get_error_message() ];
+        }
+
+        $body    = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+        $body    = is_array( $body ) ? $body : [];
+        $ok      = ! empty( $body['success'] );
+        $score   = isset( $body['score'] ) ? (float) $body['score'] : ( $ok ? 1.0 : 0.0 );
+        $passed  = 'turnstile' === $keys['provider'] ? $ok : ( $ok && $score >= $keys['threshold'] );
+
+        if ( $passed ) {
+            self::increment_counter( 'and_toolkit_captcha_verified' );
+            return [ 'success' => true, 'score' => $score, 'provider' => $keys['provider'] ];
+        }
+
+        self::increment_counter( 'and_toolkit_captcha_blocked' );
+        if ( $cap['log_blocked_attempts'] ) {
+            self::log_event(
+                'bot_protection',
+                'warning',
+                sprintf( 'Botvédelem blokkolta a kérést (%s): score=%.2f < küszöb=%.2f (művelet: %s)', $keys['provider'], $score, $keys['threshold'], $expected_action ),
+                $expected_action
+            );
+        }
+        return [ 'success' => false, 'score' => $score, 'error' => 'low-score-or-invalid-token' ];
+    }
+
+    private static function posted_captcha_token(): string {
+        if ( isset( $_POST['cf-turnstile-response'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+            return sanitize_text_field( wp_unslash( (string) $_POST['cf-turnstile-response'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+        }
+        if ( isset( $_POST['atk_captcha_token'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+            return sanitize_text_field( wp_unslash( (string) $_POST['atk_captcha_token'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+        }
+        if ( isset( $_POST['g-recaptcha-response'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+            return sanitize_text_field( wp_unslash( (string) $_POST['g-recaptcha-response'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+        }
+        return '';
+    }
+
+    public static function verify_login_captcha( $user, string $username = '', string $password = '' ) {
+        $cap = self::get_config()['captcha'];
+        if ( ! $cap['protect_login'] || '' === $username || self::captcha_should_bypass() ) {
+            return $user;
+        }
+        $check = self::verify_captcha_token( self::posted_captcha_token(), 'login' );
+        if ( ! $check['success'] ) {
+            return new \\WP_Error( 'and_toolkit_captcha_failed', __( 'Botvédelmi ellenőrzés sikertelen (reCAPTCHA v3 / Turnstile). Kérjük, próbálja újra.', 'and-toolkit' ) );
+        }
+        return $user;
+    }
+
+    public static function verify_registration_captcha( \\WP_Error $errors, string $sanitized_user_login = '', string $user_email = '' ): \\WP_Error {
+        $cap = self::get_config()['captcha'];
+        if ( $cap['protect_register'] && ! self::captcha_should_bypass() ) {
+            $check = self::verify_captcha_token( self::posted_captcha_token(), 'register' );
+            if ( ! $check['success'] ) {
+                $errors->add( 'and_toolkit_captcha_failed', __( 'Botvédelmi ellenőrzés sikertelen.', 'and-toolkit' ) );
+            }
+        }
+        return $errors;
+    }
+
+    public static function verify_lostpassword_captcha( $errors = null ): void {
+        $cap = self::get_config()['captcha'];
+        if ( ! $cap['protect_lost_password'] || self::captcha_should_bypass() ) {
+            return;
+        }
+        $check = self::verify_captcha_token( self::posted_captcha_token(), 'lostpassword' );
+        if ( ! $check['success'] ) {
+            if ( $errors instanceof \\WP_Error ) {
+                $errors->add( 'and_toolkit_captcha_failed', __( 'Botvédelmi ellenőrzés sikertelen.', 'and-toolkit' ) );
+            } else {
+                wp_die( esc_html__( 'Botvédelmi ellenőrzés sikertelen.', 'and-toolkit' ), 403 );
+            }
+        }
+    }
+
+    public static function verify_comment_captcha( array $commentdata ): array {
+        $cap = self::get_config()['captcha'];
+        if ( ! $cap['protect_comments'] || self::captcha_should_bypass() ) {
+            return $commentdata;
+        }
+        $check = self::verify_captcha_token( self::posted_captcha_token(), 'comment' );
+        if ( ! $check['success'] ) {
+            wp_die( esc_html__( 'Botvédelmi ellenőrzés sikertelen (alacsony biztonsági pontszám).', 'and-toolkit' ), 403 );
+        }
+        return $commentdata;
+    }
+
+    public static function render_captcha_badge_shortcode( $atts = [] ): string {
+        $cap = self::get_config()['captcha'];
+        if ( ! $cap['enabled'] ) {
+            return '';
+        }
+        $provider_label = 'turnstile' === $cap['provider'] ? 'Cloudflare Turnstile' : 'Google reCAPTCHA v3';
+        // Publikus jelvény: nem tesz közzé titkos kulcsot vagy érzékeny küszöbértéket.
+        return sprintf(
+            '<div class="atk-widget atk-captcha-badge" data-provider="%s"><span>%s</span></div>',
+            esc_attr( (string) $cap['provider'] ),
+            esc_html( sprintf( 'Botvédelem aktív: %s · And ToolKit v%s', $provider_label, self::VERSION ) )
+        );
     }
 
     public static function render_global_info_banner(): void {

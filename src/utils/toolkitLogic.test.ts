@@ -9,16 +9,19 @@ import {
   buildUpdateNotificationEmailPreview,
   calculateMediaQueueSummary,
   calculatePerformanceMetrics,
+  evaluateCaptchaVerification,
   filterAuditLogEntries,
   formatAuditLogsForExport,
   formatMetricValue,
   generateWordPressPluginPhp,
+  getCaptchaSensitivityLabel,
   getDaysUntilEvent,
   getFilteredCalendarPosts,
   isHighImpactCriticalEvent,
   searchPosts,
   shouldSendAuditEventEmail,
   shouldSendLoginEmailAlert,
+  validateCaptchaKeys,
   validateNewPostInput,
 } from './toolkitLogic';
 
@@ -90,7 +93,7 @@ test('filterAuditLogEntries and formatAuditLogsForExport support .log, .txt, and
   const csvOut = formatAuditLogsForExport(INITIAL_AUDIT_ENTRIES, 'csv');
 
   assert.equal(logOut.includes('actor="galandras12"'), true);
-  assert.equal(txtOut.includes('AND TOOLKIT v0.5.2'), true);
+  assert.equal(txtOut.includes('AND TOOLKIT v0.6.0'), true);
   assert.equal(csvOut.startsWith('ID,Idopont,Kategoria'), true);
 });
 
@@ -181,15 +184,65 @@ test('validateNewPostInput enforces required fields', () => {
   );
 });
 
-test('generateWordPressPluginPhp és auditWordPressPhpCompatibility: v0.5.2 teljes körű ellenőrzés', () => {
+test('v0.6.0 Botvédelem (Google reCAPTCHA v3 & Cloudflare Turnstile): kulcsvalidáció, küszöbérték és szimuláció', () => {
+  assert.equal(getCaptchaSensitivityLabel(0.3).badgeTone, 'emerald');
+  assert.equal(getCaptchaSensitivityLabel(0.5).badgeTone, 'blue');
+  assert.equal(getCaptchaSensitivityLabel(0.7).badgeTone, 'amber');
+  assert.equal(getCaptchaSensitivityLabel(0.9).badgeTone, 'rose');
+
+  const keyStatus = validateCaptchaKeys({
+    provider: 'turnstile',
+    recaptchaSiteKey: '',
+    recaptchaSecretKey: '',
+    turnstileSiteKey: '0x4AAAAAAADnPIDROrmt1Wwj',
+    turnstileSecretKey: '0x4AAAAAAADnPIDROrmt1Wwj_secret_demo_key',
+  });
+  assert.equal(keyStatus.readyForProduction, true);
+  assert.equal(keyStatus.statusLabel.includes('Cloudflare Turnstile'), true);
+
+  const strictConfig = {
+    ...INITIAL_STATE.captcha,
+    provider: 'recaptcha-v3' as const,
+    scoreThreshold: 0.7,
+    bypassLoggedInAdmins: true,
+  };
+
+  // Bot with score 0.42 < 0.70 must be blocked
+  const botAttempt = evaluateCaptchaVerification(strictConfig, {
+    score: 0.42,
+    tokenProvided: true,
+    isLoggedAdmin: false,
+  });
+  assert.equal(botAttempt.allowed, false);
+
+  // Human with score 0.85 >= 0.70 must be allowed
+  const humanAttempt = evaluateCaptchaVerification(strictConfig, {
+    score: 0.85,
+    tokenProvided: true,
+    isLoggedAdmin: false,
+  });
+  assert.equal(humanAttempt.allowed, true);
+
+  // Logged-in admin bypasses even with low score when bypassLoggedInAdmins is enabled
+  const adminBypass = evaluateCaptchaVerification(strictConfig, {
+    score: 0.15,
+    tokenProvided: false,
+    isLoggedAdmin: true,
+  });
+  assert.equal(adminBypass.allowed, true);
+});
+
+test('generateWordPressPluginPhp és auditWordPressPhpCompatibility: v0.6.0 teljes körű ellenőrzés', () => {
   const php = generateWordPressPluginPhp(INITIAL_STATE);
   assert.equal(php.includes('Plugin Name:       And ToolKit'), true);
-  assert.equal(php.includes('Version:           0.5.2'), true);
+  assert.equal(php.includes('Version:           0.6.0'), true);
   assert.equal(php.includes('Requires at least: 6.3'), true);
   assert.equal(php.includes('Requires PHP:      8.0'), true);
   assert.equal(php.includes('declare(strict_types=1);'), true);
   assert.equal(php.includes("add_action( 'wp_login'"), true);
   assert.equal(php.includes("add_action( '_core_updated_successfully'"), true);
+  assert.equal(php.includes('https://www.google.com/recaptcha/api/siteverify'), true);
+  assert.equal(php.includes('https://challenges.cloudflare.com/turnstile/v0/siteverify'), true);
   assert.equal(php.includes('/*{{DEFAULTS}}*/'), false);
   assert.equal(php.includes('@gmail.com'), false);
 
@@ -200,11 +253,11 @@ test('generateWordPressPluginPhp és auditWordPressPhpCompatibility: v0.5.2 telj
   );
   assert.equal(audit.allPassed, true);
   assert.equal(audit.passedCount, audit.totalCount);
-  assert.equal(audit.totalCount, 12);
+  assert.equal(audit.totalCount, 13);
 });
 
 test('az audit nem engedi át a régi, üres vázat (regressziós védelem)', () => {
-  const stub = "<?php declare(strict_types=1); if ( ! defined( 'ABSPATH' ) ) { exit; } final class And_ToolKit_Plugin { public const VERSION = '0.5.2'; }";
+  const stub = "<?php declare(strict_types=1); if ( ! defined( 'ABSPATH' ) ) { exit; } final class And_ToolKit_Plugin { public const VERSION = '0.6.0'; }";
   const audit = auditWordPressPhpCompatibility(stub, INITIAL_STATE);
   assert.equal(audit.allPassed, false);
   assert.equal(audit.passedCount < 3, true);
@@ -229,3 +282,4 @@ test('a Studio CSV exportja védett a képlet-injekció ellen', () => {
   const csv = formatAuditLogsForExport(entries, 'csv');
   assert.equal(csv.includes('"\'=HYPERLINK'), true);
 });
+

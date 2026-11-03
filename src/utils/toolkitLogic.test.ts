@@ -9,20 +9,31 @@ import {
   buildUpdateNotificationEmailPreview,
   calculateMediaQueueSummary,
   calculatePerformanceMetrics,
+  computeAdjustedTimestamp,
+  decryptMasterPasswordForAdmin,
+  encryptMasterPassword,
   evaluateCaptchaVerification,
+  evaluateRoleAuthRequirement,
   filterAuditLogEntries,
   formatAuditLogsForExport,
   formatMetricValue,
+  generateTotpCode,
   generateWordPressPluginPhp,
   getCaptchaSensitivityLabel,
   getDaysUntilEvent,
   getFilteredCalendarPosts,
   isHighImpactCriticalEvent,
+  isIpWhitelisted,
+  maskUserIdentityForPublic,
+  preserveAuthDataAcrossPluginUpdate,
+  sanitizeAndMaskWpOutput,
   searchPosts,
   shouldSendAuditEventEmail,
   shouldSendLoginEmailAlert,
   validateCaptchaKeys,
   validateNewPostInput,
+  verifyMasterPasswordAccess,
+  verifyTotpCodeWithDrift,
 } from './toolkitLogic';
 
 test('getFilteredCalendarPosts sorts chronologically and respects maxItems and categoryFilter', () => {
@@ -93,7 +104,7 @@ test('filterAuditLogEntries and formatAuditLogsForExport support .log, .txt, and
   const csvOut = formatAuditLogsForExport(INITIAL_AUDIT_ENTRIES, 'csv');
 
   assert.equal(logOut.includes('actor="galandras12"'), true);
-  assert.equal(txtOut.includes('AND TOOLKIT v0.6.0'), true);
+  assert.equal(txtOut.includes('AND TOOLKIT v0.7.0'), true);
   assert.equal(csvOut.startsWith('ID,Idopont,Kategoria'), true);
 });
 
@@ -133,7 +144,6 @@ test('v0.5.1 Critical Only toggle filters email notifications to only send alert
     criticalOnlyEmails: true,
   };
 
-  // Non-critical events (routine login, plugin update, user registration) must NOT send email when criticalOnlyEmails is true
   const loginDecision = shouldSendAuditEventEmail(criticalConfig, {
     category: 'user_login',
     severity: 'warning',
@@ -149,7 +159,6 @@ test('v0.5.1 Critical Only toggle filters email notifications to only send alert
   });
   assert.equal(pluginDecision.send, false);
 
-  // High-impact events (core WordPress update & file system change) MUST send email when criticalOnlyEmails is true
   const coreDecision = shouldSendAuditEventEmail(criticalConfig, {
     category: 'core_manual_update',
     severity: 'critical',
@@ -166,7 +175,6 @@ test('v0.5.1 Critical Only toggle filters email notifications to only send alert
   assert.equal(fsDecision.send, true);
   assert.equal(isHighImpactCriticalEvent({ category: 'filesystem_change', severity: 'critical' }), true);
 
-  // Email preview in Critical Only mode filters pending updates to Core only (1 item instead of 4)
   const criticalPreview = buildUpdateNotificationEmailPreview(criticalConfig);
   assert.equal(criticalPreview.includedCount, 1);
   assert.equal(criticalPreview.subject.includes('CRITICAL ONLY'), true);
@@ -207,7 +215,6 @@ test('v0.6.0 Botvédelem (Google reCAPTCHA v3 & Cloudflare Turnstile): kulcsvali
     bypassLoggedInAdmins: true,
   };
 
-  // Bot with score 0.42 < 0.70 must be blocked
   const botAttempt = evaluateCaptchaVerification(strictConfig, {
     score: 0.42,
     tokenProvided: true,
@@ -215,7 +222,6 @@ test('v0.6.0 Botvédelem (Google reCAPTCHA v3 & Cloudflare Turnstile): kulcsvali
   });
   assert.equal(botAttempt.allowed, false);
 
-  // Human with score 0.85 >= 0.70 must be allowed
   const humanAttempt = evaluateCaptchaVerification(strictConfig, {
     score: 0.85,
     tokenProvided: true,
@@ -223,7 +229,6 @@ test('v0.6.0 Botvédelem (Google reCAPTCHA v3 & Cloudflare Turnstile): kulcsvali
   });
   assert.equal(humanAttempt.allowed, true);
 
-  // Logged-in admin bypasses even with low score when bypassLoggedInAdmins is enabled
   const adminBypass = evaluateCaptchaVerification(strictConfig, {
     score: 0.15,
     tokenProvided: false,
@@ -232,10 +237,118 @@ test('v0.6.0 Botvédelem (Google reCAPTCHA v3 & Cloudflare Turnstile): kulcsvali
   assert.equal(adminBypass.allowed, true);
 });
 
-test('generateWordPressPluginPhp és auditWordPressPhpCompatibility: v0.6.0 teljes körű ellenőrzés', () => {
+test('v0.7.0 Hitelesítés: 2FA TOTP, időeltolódás-korrekció, frissítés-biztos adattárolás, rang-mátrix és IP fehérlista', () => {
+  const baseTs = 1762158000;
+  const adjusted = computeAdjustedTimestamp(baseTs, {
+    timeDriftCorrectionEnabled: true,
+    timeOffsetSeconds: 90,
+  });
+  assert.equal(adjusted, baseTs + 90);
+
+  const codeCurrent = generateTotpCode('JBSWY3DPEHPK3PXPANDTK070', adjusted, 30);
+  assert.equal(/^\d{6}$/.test(codeCurrent), true);
+
+  // Verify with drift (+1 window = +30s) succeeds within toleranceWindows = 2
+  const nextWindowCode = generateTotpCode('JBSWY3DPEHPK3PXPANDTK070', adjusted + 30, 30);
+  const driftRes = verifyTotpCodeWithDrift(
+    'JBSWY3DPEHPK3PXPANDTK070',
+    nextWindowCode,
+    baseTs,
+    {
+      timeDriftCorrectionEnabled: true,
+      timeOffsetSeconds: 90,
+      toleranceWindows: 2,
+      totpPeriodSeconds: 30,
+    }
+  );
+  assert.equal(driftRes.valid, true);
+  assert.equal(driftRes.matchedWindowOffset, 1);
+
+  // IP whitelist supports exact IP and /24 CIDR
+  assert.equal(isIpWhitelisted('192.168.1.99', ['127.0.0.1', '192.168.1.0/24']), true);
+  assert.equal(isIpWhitelisted('10.10.10.5', ['127.0.0.1', '192.168.1.0/24']), false);
+
+  // Role matrix evaluation
+  const adminEval = evaluateRoleAuthRequirement('administrator', INITIAL_STATE.auth, '203.0.113.5');
+  assert.equal(adminEval.enforced, true);
+  assert.equal(adminEval.requiredMethods.includes('totp'), true);
+
+  const whitelistedEval = evaluateRoleAuthRequirement('administrator', INITIAL_STATE.auth, '127.0.0.1');
+  assert.equal(whitelistedEval.bypassedByIpWhitelist, true);
+  assert.equal(whitelistedEval.enforced, false);
+
+  // Update-safe persistence preserves 2FA secret, Passkeys, and Offline codes across plugin updates
+  const blankIncoming = {
+    ...INITIAL_STATE.auth,
+    totpSecretKey: '',
+    passkeyCredentials: [],
+    offlineSavedItems: [],
+    whitelistedIps: [],
+  };
+  const preserved = preserveAuthDataAcrossPluginUpdate(INITIAL_STATE.auth, blankIncoming);
+  assert.equal(preserved.totpSecretKey, INITIAL_STATE.auth.totpSecretKey);
+  assert.equal(preserved.passkeyCredentials.length, 2);
+  assert.equal(preserved.offlineSavedItems.length, 4);
+});
+
+test('v0.7.0 WP Rejtés & Mesterjelszó: titkosítás, admin felfedés, IP fehérlista, szerző maszkolás és forráskód-védelem', () => {
+  const enc = encryptMasterPassword('SzuperTitkosMester#2026');
+  assert.equal(enc.cipher.startsWith('atk_enc_v1:'), true);
+  assert.equal(enc.cipher.includes('SzuperTitkosMester'), false);
+
+  // Unauthorized user cannot decrypt, authorized admin can reveal
+  assert.equal(decryptMasterPasswordForAdmin(enc.cipher, false), null);
+  assert.equal(decryptMasterPasswordForAdmin(enc.cipher, true), 'SzuperTitkosMester#2026');
+
+  const hideCfg = {
+    ...INITIAL_STATE.wpHide,
+    masterPasswordEnabled: true,
+    masterPasswordCipher: enc.cipher,
+    masterPasswordHash: enc.hash,
+  };
+
+  assert.equal(verifyMasterPasswordAccess('HibasJelszo', hideCfg, '203.0.113.99').granted, false);
+  assert.equal(verifyMasterPasswordAccess('SzuperTitkosMester#2026', hideCfg, '203.0.113.99').granted, true);
+  assert.equal(verifyMasterPasswordAccess('', hideCfg, '127.0.0.1').bypassedByIp, true);
+
+  // Username & email masking
+  const masked = maskUserIdentityForPublic(
+    { userLogin: 'admin_login', email: 'admin@secret.hu', userId: 7 },
+    INITIAL_STATE.wpHide
+  );
+  assert.equal(masked.loginExposed, false);
+  assert.equal(masked.publicAuthorName.includes('admin_login'), false);
+  assert.equal(masked.publicEmailDisplay.includes('admin@secret.hu'), false);
+
+  // Zero-source-leak HTML protection when membersOnlyMode is active for guests
+  const lockedCfg = {
+    ...INITIAL_STATE.wpHide,
+    membersOnlyMode: true,
+    stripHtmlSourceForGuests: true,
+  };
+  const rawHtml = '<html><head><meta name="generator" content="WordPress 7.1"></head><body><article>Titkos Uzleti Tartalom</article><script src="/wp-content/themes/a/app.js"></script></body></html>';
+  const guestResult = sanitizeAndMaskWpOutput(rawHtml, lockedCfg, {
+    isUserLoggedIn: false,
+    hasValidMasterPassword: true,
+  });
+  assert.equal(guestResult.blockedByGate, true);
+  assert.equal(guestResult.sourceCodeProtected, true);
+  assert.equal(guestResult.outputHtml.includes('Titkos Uzleti Tartalom'), false);
+
+  // Logged-in member gets content with /wp-content/ rewritten to custom slug
+  const memberResult = sanitizeAndMaskWpOutput(rawHtml, lockedCfg, {
+    isUserLoggedIn: true,
+    hasValidMasterPassword: true,
+  });
+  assert.equal(memberResult.blockedByGate, false);
+  assert.equal(memberResult.outputHtml.includes('/assets-media/themes/a/app.js'), true);
+  assert.equal(memberResult.outputHtml.includes('WordPress 7.1'), false);
+});
+
+test('generateWordPressPluginPhp és auditWordPressPhpCompatibility: v0.7.0 teljes körű ellenőrzés', () => {
   const php = generateWordPressPluginPhp(INITIAL_STATE);
   assert.equal(php.includes('Plugin Name:       And ToolKit'), true);
-  assert.equal(php.includes('Version:           0.6.0'), true);
+  assert.equal(php.includes('Version:           0.7.0'), true);
   assert.equal(php.includes('Requires at least: 6.3'), true);
   assert.equal(php.includes('Requires PHP:      8.0'), true);
   assert.equal(php.includes('declare(strict_types=1);'), true);
@@ -243,6 +356,8 @@ test('generateWordPressPluginPhp és auditWordPressPhpCompatibility: v0.6.0 telj
   assert.equal(php.includes("add_action( '_core_updated_successfully'"), true);
   assert.equal(php.includes('https://www.google.com/recaptcha/api/siteverify'), true);
   assert.equal(php.includes('https://challenges.cloudflare.com/turnstile/v0/siteverify'), true);
+  assert.equal(php.includes("add_shortcode( 'wtk_auth_manager'"), true);
+  assert.equal(php.includes("add_shortcode( 'wtk_custom_login'"), true);
   assert.equal(php.includes('/*{{DEFAULTS}}*/'), false);
   assert.equal(php.includes('@gmail.com'), false);
 
@@ -253,11 +368,11 @@ test('generateWordPressPluginPhp és auditWordPressPhpCompatibility: v0.6.0 telj
   );
   assert.equal(audit.allPassed, true);
   assert.equal(audit.passedCount, audit.totalCount);
-  assert.equal(audit.totalCount, 13);
+  assert.equal(audit.totalCount, 15);
 });
 
 test('az audit nem engedi át a régi, üres vázat (regressziós védelem)', () => {
-  const stub = "<?php declare(strict_types=1); if ( ! defined( 'ABSPATH' ) ) { exit; } final class And_ToolKit_Plugin { public const VERSION = '0.6.0'; }";
+  const stub = "<?php declare(strict_types=1); if ( ! defined( 'ABSPATH' ) ) { exit; } final class And_ToolKit_Plugin { public const VERSION = '0.7.0'; }";
   const audit = auditWordPressPhpCompatibility(stub, INITIAL_STATE);
   assert.equal(audit.allPassed, false);
   assert.equal(audit.passedCount < 3, true);
@@ -282,4 +397,3 @@ test('a Studio CSV exportja védett a képlet-injekció ellen', () => {
   const csv = formatAuditLogsForExport(entries, 'csv');
   assert.equal(csv.includes('"\'=HYPERLINK'), true);
 });
-

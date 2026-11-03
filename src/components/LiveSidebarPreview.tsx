@@ -1352,6 +1352,89 @@ export const LiveSidebarPreview: React.FC<LiveSidebarPreviewProps> = ({
               </div>
             </section>
           )}
+
+          {/* 9. AUTHENTICATION & 2FA / PASSKEY / TIME SYNC WIDGET ([wtk_auth_manager] · v0.7.0) */}
+          {state.auth.enabled && state.auth.showSidebarAuthWidget && (
+            <section
+              aria-label="Hitelesítés és 2FA Widget Előnézet"
+              className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-2.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Lock className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Hitelesítés (2FA, Passkey &amp; Időszinkron)
+                  </h3>
+                </div>
+                <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+                  [wtk_auth_manager]
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 rounded bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                  <div className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                    {(state.auth.passkeyCredentials ?? []).length} db
+                  </div>
+                  <div className="text-[10px] text-slate-500">Passkey kulcs</div>
+                </div>
+                <div className="p-2 rounded bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                  <div className="text-xs font-mono font-bold text-slate-900 dark:text-slate-100">
+                    {(state.auth.offlineSavedItems ?? []).length} db
+                  </div>
+                  <div className="text-[10px] text-slate-500">Offline kód</div>
+                </div>
+                <div className="p-2 rounded bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                  <div className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    {state.auth.timeOffsetSeconds >= 0
+                      ? `+${state.auth.timeOffsetSeconds}`
+                      : state.auth.timeOffsetSeconds}{' '}
+                    mp
+                  </div>
+                  <div className="text-[10px] text-slate-500">Időszinkron</div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* 10. WP HIDE, AJAX BUBBLE LOGIN & MASTER PASSWORD SHIELD ([wtk_custom_login] · v0.7.0) */}
+          {state.wpHide.enabled && state.wpHide.showSidebarHideBadge && (
+            <section
+              aria-label="WP Rejtés és Buborék Belépés Előnézet"
+              className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-2.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Eye className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    WP Rejtés &amp; Mesterjelszó Pajzs
+                  </h3>
+                </div>
+                <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+                  [wtk_custom_login]
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600 dark:text-slate-400 font-mono">
+                <span>Belépő: /{state.wpHide.customLoginSlug}</span>
+                <span>·</span>
+                <span>
+                  {state.wpHide.membersOnlyMode ? 'Tagoknak Zárolva' : 'URL Álcázás Aktív'}
+                </span>
+              </div>
+
+              {state.wpHide.enableAjaxBubbleLogin && (
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] text-slate-500">
+                    AJAX lebegő belépő ({state.wpHide.bubblePosition}):
+                  </span>
+                  <span className="px-2.5 py-1 rounded bg-blue-600 text-white text-[11px] font-semibold">
+                    {state.wpHide.bubbleButtonLabel}
+                  </span>
+                </div>
+              )}
+            </section>
+          )}
         </div>
       </div>
 

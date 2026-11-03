@@ -1083,22 +1083,7 @@ export default function App() {
               <AuthModulePanel
                 config={state.auth}
                 onChange={updateAuth}
-                onAppendAuditLog={(partial) =>
-                  handleAppendAuditLogEntry({
-                    id: `log-auth-${Date.now()}`,
-                    timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
-                    category: partial.category,
-                    actorUser: partial.actorLogin || 'galandras12',
-                    actorRole: partial.actorRole || 'administrator',
-                    actionLabel: partial.target || 'Hitelesítés művelet',
-                    targetObject: partial.target || 'Hitelesítés',
-                    details: partial.summary || '',
-                    ipLocation: partial.actorIp || '127.0.0.1',
-                    deviceBrowser: partial.userAgent || 'And ToolKit Studio',
-                    isNewDeviceOrLocation: false,
-                    severity: partial.severity,
-                  })
-                }
+                onAppendAuditLog={handleAppendAuditLogEntry}
               />
             )}
 
@@ -1106,22 +1091,7 @@ export default function App() {
               <WpHideModulePanel
                 config={state.wpHide}
                 onChange={updateWpHide}
-                onAppendAuditLog={(partial) =>
-                  handleAppendAuditLogEntry({
-                    id: `log-hide-${Date.now()}`,
-                    timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
-                    category: partial.category,
-                    actorUser: partial.actorLogin || 'galandras12',
-                    actorRole: partial.actorRole || 'administrator',
-                    actionLabel: partial.target || 'WP Rejtés művelet',
-                    targetObject: partial.target || 'WP Rejtés',
-                    details: partial.summary || '',
-                    ipLocation: partial.actorIp || '127.0.0.1',
-                    deviceBrowser: partial.userAgent || 'And ToolKit Studio',
-                    isNewDeviceOrLocation: false,
-                    severity: partial.severity,
-                  })
-                }
+                onAppendAuditLog={handleAppendAuditLogEntry}
               />
             )}
 

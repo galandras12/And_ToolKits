@@ -93,6 +93,16 @@ const CATEGORY_META: Record<
     hook: 'authenticate / registration_errors / preprocess_comment',
     badgeClass: 'text-fuchsia-700 dark:text-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-950/80 border-fuchsia-300 dark:border-fuchsia-800',
   },
+  auth_security: {
+    label: 'Hitelesítés (2FA / Passkey)',
+    hook: 'verify_totp_with_time_drift / auth_sync_time',
+    badgeClass: 'text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/80 border-indigo-300 dark:border-indigo-800',
+  },
+  wp_hide_shield: {
+    label: 'WP Rejtés & Mesterjelszó',
+    hook: 'enforce_wp_hide_access_gate / bubble_login',
+    badgeClass: 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/80 border-rose-300 dark:border-rose-800',
+  },
 };
 
 const ROLE_LABELS: Record<WpUserRole, string> = {

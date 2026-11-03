@@ -14,24 +14,22 @@ import {
   Plus,
   Trash2,
   CheckCircle2,
-  AlertTriangle,
   Copy,
   Check,
-  Sparkles,
-  Lock,
 } from 'lucide-react';
 import {
   AuthConfig,
   AuthMethodId,
-  AuditRoleTarget,
+  WpUserRole,
   RoleAuthPolicy,
   AuditLogEntry,
+  PasskeyCredentialItem,
+  OfflineSavedPasswordItem,
 } from '../types/toolkit';
 import {
   computeAdjustedTimestamp,
   generateTotpCode,
   verifyTotpCodeWithDrift,
-  isIpWhitelisted,
   evaluateRoleAuthRequirement,
   preserveAuthDataAcrossPluginUpdate,
 } from '../utils/toolkitLogic';
@@ -39,10 +37,10 @@ import {
 interface AuthModulePanelProps {
   config: AuthConfig;
   onChange: (updated: Partial<AuthConfig>) => void;
-  onAppendAuditLog?: (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => void;
+  onAppendAuditLog?: (entry: AuditLogEntry) => void;
 }
 
-const ROLE_LABELS: Record<AuditRoleTarget, string> = {
+const ROLE_LABELS: Record<WpUserRole, string> = {
   administrator: 'Adminisztrátor',
   editor: 'Szerkesztő',
   author: 'Szerző',
@@ -79,7 +77,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
   const [generatedPlainOfflineCode, setGeneratedPlainOfflineCode] = useState<string | null>(null);
   const [newWhitelistIp, setNewWhitelistIp] = useState<string>('');
   const [testClientIp, setTestClientIp] = useState<string>('192.168.1.45');
-  const [testUserRole, setTestUserRole] = useState<AuditRoleTarget>('administrator');
+  const [testUserRole, setTestUserRole] = useState<WpUserRole>('administrator');
   const [copiedShortcode, setCopiedShortcode] = useState<boolean>(false);
   const [emailOtpTestCode, setEmailOtpTestCode] = useState<string | null>(null);
   const [updateSimStatus, setUpdateSimStatus] = useState<string | null>(null);
@@ -92,123 +90,148 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
     return () => window.clearInterval(timer);
   }, []);
 
-  const adjustedTime = computeAdjustedTimestamp(nowMs, config.manualTimeOffsetSec);
-  const currentTotpCode = generateTotpCode(config.totpSecret, adjustedTime.adjustedUnixSec);
-  const totpRemainingSec = 30 - (adjustedTime.adjustedUnixSec % 30);
+  const baseUnixSec = Math.floor(nowMs / 1000);
+  const adjustedUnixSec = computeAdjustedTimestamp(baseUnixSec, config);
+  const adjustedIsoStr = new Date(adjustedUnixSec * 1000)
+    .toISOString()
+    .replace('T', ' ')
+    .slice(0, 19);
+  const currentTotpCode = generateTotpCode(
+    config.totpSecretKey,
+    adjustedUnixSec,
+    config.totpPeriodSeconds
+  );
+  const totpRemainingSec = 30 - (adjustedUnixSec % 30);
+
+  const passkeyList = config.passkeyCredentials ?? [];
+  const offlineList = config.offlineSavedItems ?? [];
+  const whitelistIps = config.whitelistedIps ?? [];
 
   const handleSyncWithDevice = () => {
-    const deviceNowIso = new Date().toISOString().slice(0, 19);
+    const deviceNowIso = new Date().toISOString().replace('T', ' ').slice(0, 19);
     onChange({
+      timeDriftCorrectionEnabled: true,
       manualServerTimeIso: deviceNowIso,
-      manualTimeOffsetSec: 0,
-      lastTimeSyncAt: new Date().toISOString(),
+      timeOffsetSeconds: 0,
+      lastSyncedWithDeviceAt: deviceNowIso,
     });
     onAppendAuditLog?.({
+      id: `log-auth-sync-${Date.now()}`,
+      timestamp: deviceNowIso,
       category: 'auth_security',
-      severity: 'info',
-      actorLogin: 'galandras12',
+      actionLabel: 'Időszinkronizálás a készülékkel (2FA TOTP)',
+      actorUser: 'galandras12',
       actorRole: 'administrator',
-      actorIp: '127.0.0.1',
-      userAgent: 'Device Clock Sync (TOTP Drift Zeroed)',
-      target: '10. Hitelesítés · Időszinkron',
-      summary: 'Szerver és kliens készülék órája szinkronizálva (0 mp elcsúszás, időzóna-független UTC TOTP ablak).',
-      emailDispatched: false,
+      targetObject: '10. Hitelesítés · Időszinkron',
+      details:
+        'Szerver és kliens készülék órája szinkronizálva (0 mp elcsúszás, időzóna-független UTC TOTP ablak).',
+      ipLocation: '127.0.0.1 (Helyi Admin)',
+      deviceBrowser: 'Device Clock Sync (TOTP Drift Zeroed)',
+      severity: 'info',
     });
   };
 
   const handleManualDateTimeChange = (isoValue: string) => {
+    const normalizedIso = isoValue.replace('T', ' ');
     const parsedMs = Date.parse(isoValue);
     if (!Number.isNaN(parsedMs)) {
       const diffSec = Math.round((parsedMs - Date.now()) / 1000);
       onChange({
-        manualServerTimeIso: isoValue,
-        manualTimeOffsetSec: Math.max(-86400, Math.min(86400, diffSec)),
-        lastTimeSyncAt: new Date().toISOString(),
+        timeDriftCorrectionEnabled: true,
+        manualServerTimeIso:
+          normalizedIso.length === 16 ? `${normalizedIso}:00` : normalizedIso,
+        timeOffsetSeconds: Math.max(-86400, Math.min(86400, diffSec)),
+        lastSyncedWithDeviceAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
       });
     } else {
-      onChange({ manualServerTimeIso: isoValue });
+      onChange({ manualServerTimeIso: normalizedIso });
     }
   };
 
   const handleVerifyTotp = () => {
     const codeToVerify = totpInput.trim() || currentTotpCode;
     const res = verifyTotpCodeWithDrift(
-      config.totpSecret,
+      config.totpSecretKey,
       codeToVerify,
-      nowMs,
-      config.manualTimeOffsetSec,
-      config.timeDriftToleranceWindows
+      baseUnixSec,
+      config
     );
     if (res.valid) {
       setTotpCheckMessage({
         valid: true,
-        text: `Sikeres 2FA TOTP ellenőrzés! Kód: ${codeToVerify} (Időablak eltérés: ${res.matchedWindowOffset * 30} mp)`,
+        text: `Sikeres 2FA TOTP ellenőrzés! Kód: ${codeToVerify} (Időablak eltérés: ${(res.matchedWindowOffset ?? 0) * 30} mp)`,
       });
     } else {
       setTotpCheckMessage({
         valid: false,
-        text: 'Érvénytelen 2FA kód! Használja a Készülékkel való szinkronizálást vagy ellenőrizze a 6 jegyű kódot.',
+        text: `Érvénytelen 2FA kód! Várt aktuális kód: ${res.expectedCurrentCode}. Használja a Készülékkel való szinkronizálást!`,
       });
     }
   };
 
   const handleRegenerateSecret = () => {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    let next = 'JBSWY3DPEHPK3PXP';
-    next = Array.from({ length: 16 }, (_, idx) => alphabet[(Date.now() + idx * 7) % alphabet.length]).join('');
-    onChange({ totpSecret: next });
+    const next = Array.from(
+      { length: 24 },
+      (_, idx) => alphabet[(Date.now() + idx * 7) % alphabet.length]
+    ).join('');
+    onChange({ totpSecretKey: next });
     setTotpCheckMessage(null);
   };
 
   const handleAddPasskey = () => {
-    const label = newPasskeyLabel.trim() || `Passkey Eszköz #${config.passkeys.length + 1}`;
+    const label = newPasskeyLabel.trim() || `Passkey Eszköz #${passkeyList.length + 1}`;
     const randomHex = Math.abs((Date.now() * 2654435761) | 0)
       .toString(16)
-      .toUpperCase()
+      .toLowerCase()
       .padStart(8, '0');
-    const newItem = {
+    const nowStr = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    const newItem: PasskeyCredentialItem = {
       id: `pk-${Date.now()}`,
-      deviceName: label,
-      credentialIdPreview: `cred_webauthn_${randomHex.slice(0, 6)}...`,
-      createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      lastUsedAt: 'Most regisztrálva',
-      aaguid: 'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4',
+      label,
+      deviceType: 'WebAuthn / FIDO2 Passkey',
+      createdAt: nowStr,
+      lastUsedAt: nowStr,
+      credentialIdPreview: `cred_fido2_${randomHex.slice(0, 4)}...${randomHex.slice(-4)}`,
     };
-    onChange({ passkeys: [newItem, ...config.passkeys] });
+    onChange({ passkeyCredentials: [newItem, ...passkeyList] });
     setNewPasskeyLabel('');
     onAppendAuditLog?.({
+      id: `log-auth-pk-${Date.now()}`,
+      timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
       category: 'auth_security',
-      severity: 'info',
-      actorLogin: 'galandras12',
+      actionLabel: 'Új Passkey (WebAuthn) Regisztrálva',
+      actorUser: 'galandras12',
       actorRole: 'administrator',
-      actorIp: '127.0.0.1',
-      userAgent: 'WebAuthn / FIDO2 Authenticator',
-      target: label,
-      summary: `Új Passkey (WebAuthn) hitelesítő kulcs regisztrálva: ${label}`,
-      emailDispatched: false,
+      targetObject: label,
+      details: `Új Passkey (WebAuthn / FIDO2) hitelesítő kulcs regisztrálva: ${label}`,
+      ipLocation: '127.0.0.1',
+      deviceBrowser: 'WebAuthn / FIDO2 Authenticator',
+      severity: 'info',
     });
   };
 
   const handleRemovePasskey = (id: string) => {
-    onChange({ passkeys: config.passkeys.filter((p) => p.id !== id) });
+    onChange({ passkeyCredentials: passkeyList.filter((p) => p.id !== id) });
   };
 
   const handleGenerateOfflinePassword = () => {
-    const label = newOfflineLabel.trim() || `Mentett Offline Vészkód #${config.offlinePasswords.length + 1}`;
+    const label =
+      newOfflineLabel.trim() || `Vészhelyzeti Offline Kód #${offlineList.length + 1}`;
     const partA = Math.random().toString(36).substring(2, 6).toUpperCase();
     const partB = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const partC = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const plainCode = `ATK7-${partA}-${partB}-${partC}`;
-    const newItem = {
+    const plainCode = `ATK7-${partA}-${partB}`;
+    const nowStr = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    const newItem: OfflineSavedPasswordItem = {
       id: `off-${Date.now()}`,
+      codePreview: plainCode,
+      passwordHash: `sha256$${btoa(plainCode).slice(0, 16)}...`,
       label,
-      maskedPreview: `ATK7-${partA}-••••-${partC.slice(-2)}`,
-      passwordHash: `sha256:${btoa(plainCode).slice(0, 24)}`,
-      createdAt: new Date().toISOString().slice(0, 10),
+      createdAt: nowStr,
       used: false,
     };
     setGeneratedPlainOfflineCode(plainCode);
-    onChange({ offlinePasswords: [newItem, ...config.offlinePasswords] });
+    onChange({ offlineSavedItems: [newItem, ...offlineList] });
     setNewOfflineLabel('');
   };
 
@@ -221,9 +244,9 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
       `Frissítés-biztos védelem: ${config.preserveCredentialsOnUpdate ? 'AKTÍV' : 'KIKAPCSOLVA'}`,
       '============================================================',
       '',
-      ...config.offlinePasswords.map(
+      ...offlineList.map(
         (item, idx) =>
-          `${idx + 1}. [${item.used ? 'FELHASZNÁLVA' : 'AKTÍV'}] ${item.label} | Előnézet: ${item.maskedPreview} | Hash: ${item.passwordHash} | Létrehozva: ${item.createdAt}`
+          `${idx + 1}. [${item.used ? 'FELHASZNÁLVA' : 'AKTÍV'}] ${item.label} | Kód: ${item.codePreview} | Hash: ${item.passwordHash} | Létrehozva: ${item.createdAt}`
       ),
       '',
       'Megjegyzés: A kódok SHA-256 hash formában tárolódnak a wp_options táblában.',
@@ -238,15 +261,15 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
   };
 
   const handleRolePolicyChange = (
-    role: AuditRoleTarget,
+    role: WpUserRole,
     method: AuthMethodId,
     policy: RoleAuthPolicy
   ) => {
     onChange({
-      rolePolicies: {
-        ...config.rolePolicies,
+      roleMatrix: {
+        ...config.roleMatrix,
         [role]: {
-          ...config.rolePolicies[role],
+          ...config.roleMatrix[role],
           [method]: policy,
         },
       },
@@ -255,25 +278,26 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
 
   const handleAddWhitelistIp = () => {
     const cleaned = newWhitelistIp.trim();
-    if (!cleaned || config.whitelistedIps.includes(cleaned)) return;
-    onChange({ whitelistedIps: [...config.whitelistedIps, cleaned] });
+    if (!cleaned || whitelistIps.includes(cleaned)) return;
+    onChange({ whitelistedIps: [...whitelistIps, cleaned] });
     setNewWhitelistIp('');
   };
 
   const handleRemoveWhitelistIp = (ip: string) => {
-    onChange({ whitelistedIps: config.whitelistedIps.filter((item) => item !== ip) });
+    onChange({ whitelistedIps: whitelistIps.filter((item) => item !== ip) });
   };
 
   const handleSimulatePluginUpdate = () => {
     const incomingDefaultAuth: AuthConfig = {
       ...config,
-      totpSecret: 'RESET_DEFAULT_SECRET_000',
-      passkeys: [],
-      offlinePasswords: [],
+      totpSecretKey: 'RESET',
+      passkeyCredentials: [],
+      offlineSavedItems: [],
+      whitelistedIps: [],
     };
     const merged = preserveAuthDataAcrossPluginUpdate(config, incomingDefaultAuth);
     setUpdateSimStatus(
-      `Frissítési teszt sikeres! Megőrizve: 2FA Secret (${merged.totpSecret.slice(0, 6)}…), ${merged.passkeys.length} db Passkey és ${merged.offlinePasswords.length} db Offline mentett jelszó.`
+      `Frissítési teszt sikeres! Megőrizve: 2FA Secret (${merged.totpSecretKey.slice(0, 6)}…), ${merged.passkeyCredentials.length} db Passkey és ${merged.offlineSavedItems.length} db Offline mentett jelszó.`
     );
   };
 
@@ -288,12 +312,12 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
     window.setTimeout(() => setCopiedShortcode(false), 1800);
   };
 
-  const roleEval = evaluateRoleAuthRequirement(config, testUserRole, testClientIp);
+  const roleEval = evaluateRoleAuthRequirement(testUserRole, config, testClientIp);
 
   return (
     <div className="space-y-6">
       {/* Header Card */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-100">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3.5">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-400">
@@ -302,7 +326,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-lg font-bold text-white">
-                  10. Hitelesítés Központ (2FA, Időszinkron, Passkey, E-mail & Offline Széf)
+                  10. Hitelesítés Központ (2FA, Időszinkron, Passkey, E-mail &amp; Offline Széf)
                 </h2>
                 <span className="rounded-md border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-indigo-300">
                   v0.7.0 ÚJDONSÁG
@@ -337,7 +361,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
               </div>
               <p className="mt-0.5 text-[11px] text-emerald-300/80">
                 Ha a bővítmény frissítésre kerül (v0.6.0 → v0.7.0+), a beállított 2FA TOTP titkos kulcsok,
-                regisztrált Passkey-k és Offline mentett kódok automatikusan védettek, soha nem íródnak felül.
+                regisztrált Passkey-k és Offline mentett kódok automatikusan védettek, soha nem vesznek el.
               </p>
               {updateSimStatus && (
                 <p className="mt-1.5 rounded bg-emerald-950/70 px-2.5 py-1 font-mono text-[11px] text-emerald-300">
@@ -370,7 +394,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
       {/* Row 1: 2FA TOTP + Server/Client Time Drift Sync */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* 2FA TOTP Standard Authenticator */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <Smartphone className="h-5 w-5 text-indigo-400" />
@@ -439,8 +463,8 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
                 </div>
                 <input
                   type="text"
-                  value={config.totpSecret}
-                  onChange={(e) => onChange({ totpSecret: e.target.value.toUpperCase() })}
+                  value={config.totpSecretKey}
+                  onChange={(e) => onChange({ totpSecretKey: e.target.value.toUpperCase() })}
                   className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 font-mono text-xs text-indigo-300"
                 />
               </div>
@@ -493,16 +517,16 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
         </div>
 
         {/* Server & Client Time Drift Correction & Manual Sync */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <Clock className="h-5 w-5 text-amber-400" />
               <h3 className="text-sm font-bold text-white">
-                Szerver–Kliens Időeltolódás Korrekció & Készülék Szinkron
+                Szerver–Kliens Időeltolódás Korrekció &amp; Készülék Szinkron
               </h3>
             </div>
             <span className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] text-amber-300">
-              Offset: {config.manualTimeOffsetSec >= 0 ? `+${config.manualTimeOffsetSec}` : config.manualTimeOffsetSec} mp
+              Offset: {config.timeOffsetSeconds >= 0 ? `+${config.timeOffsetSeconds}` : config.timeOffsetSeconds} mp
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-400">
@@ -523,7 +547,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
                 Korrigált Hitelesítő Szerveridő
               </div>
               <div className="mt-1 font-mono text-xs font-bold text-indigo-300">
-                {adjustedTime.adjustedIso.replace('T', ' ').slice(0, 19)} UTC
+                {adjustedIsoStr} UTC
               </div>
             </div>
           </div>
@@ -536,7 +560,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
               <div className="mt-1 flex flex-wrap gap-2">
                 <input
                   type="datetime-local"
-                  value={config.manualServerTimeIso.slice(0, 16)}
+                  value={config.manualServerTimeIso.replace(' ', 'T').slice(0, 16)}
                   onChange={(e) => handleManualDateTimeChange(e.target.value)}
                   className="flex-1 rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 font-mono text-xs text-white"
                 />
@@ -554,33 +578,38 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-400">
-                  Manuális eltolás másodpercben ({config.manualTimeOffsetSec} mp)
+                  Manuális eltolás másodpercben ({config.timeOffsetSeconds} mp)
                 </label>
                 <input
                   type="number"
                   min={-86400}
                   max={86400}
-                  value={config.manualTimeOffsetSec}
-                  onChange={(e) => onChange({ manualTimeOffsetSec: Number(e.target.value) || 0 })}
+                  value={config.timeOffsetSeconds}
+                  onChange={(e) =>
+                    onChange({
+                      timeDriftCorrectionEnabled: true,
+                      timeOffsetSeconds: Number(e.target.value) || 0,
+                    })
+                  }
                   className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 font-mono text-xs text-white"
                 />
               </div>
 
               <div>
                 <label className="block text-[11px] font-semibold text-slate-400">
-                  Időablak tűréshatár (±{config.timeDriftToleranceWindows * 30} mp)
+                  Időablak tűréshatár (±{config.toleranceWindows * 30} mp)
                 </label>
                 <select
-                  value={config.timeDriftToleranceWindows}
+                  value={config.toleranceWindows}
                   onChange={(e) =>
-                    onChange({ timeDriftToleranceWindows: Number(e.target.value) })
+                    onChange({ toleranceWindows: Number(e.target.value) })
                   }
                   className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-white"
                 >
-                  <option value={0}>±0 ablak (szigorú 30 mp)</option>
-                  <option value={1}>±1 ablak (±30 mp tolerancia – ajánlott)</option>
-                  <option value={2}>±2 ablak (±60 mp tolerancia)</option>
+                  <option value={1}>±1 ablak (±30 mp tolerancia)</option>
+                  <option value={2}>±2 ablak (±60 mp tolerancia – ajánlott)</option>
                   <option value={3}>±3 ablak (±90 mp tolerancia)</option>
+                  <option value={4}>±4 ablak (±120 mp tolerancia)</option>
                 </select>
               </div>
             </div>
@@ -591,7 +620,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
       {/* Row 2: Passkey + Email Authenticator + Offline Password Vault */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Passkey (WebAuthn) */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 text-slate-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Fingerprint className="h-5 w-5 text-cyan-400" />
@@ -621,13 +650,13 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
           </div>
 
           <div className="mt-3 space-y-2">
-            {config.passkeys.map((pk) => (
+            {passkeyList.map((pk) => (
               <div
                 key={pk.id}
                 className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs"
               >
                 <div>
-                  <div className="font-semibold text-white">{pk.deviceName}</div>
+                  <div className="font-semibold text-white">{pk.label}</div>
                   <div className="font-mono text-[10px] text-slate-400">
                     {pk.credentialIdPreview} · {pk.lastUsedAt}
                   </div>
@@ -664,7 +693,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
         </div>
 
         {/* Email Authenticator */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 text-slate-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-emerald-400" />
@@ -690,9 +719,11 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
                 type="number"
                 min={1}
                 max={60}
-                value={config.emailCodeExpiryMins}
+                value={config.emailOtpExpiryMinutes}
                 onChange={(e) =>
-                  onChange({ emailCodeExpiryMins: Math.max(1, Math.min(60, Number(e.target.value) || 10)) })
+                  onChange({
+                    emailOtpExpiryMinutes: Math.max(1, Math.min(60, Number(e.target.value) || 10)),
+                  })
                 }
                 className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 font-mono text-xs text-white"
               />
@@ -709,7 +740,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
             {emailOtpTestCode && (
               <div className="rounded-xl border border-emerald-500/30 bg-slate-950 p-3 text-xs">
                 <div className="text-[10px] font-semibold uppercase text-emerald-400">
-                  Kiküldött E-mail OTP előnézet ({config.emailCodeExpiryMins} percig érvényes)
+                  Kiküldött E-mail OTP előnézet ({config.emailOtpExpiryMinutes} percig érvényes)
                 </div>
                 <div className="mt-1 font-mono text-lg font-bold tracking-widest text-white">
                   {emailOtpTestCode}
@@ -720,7 +751,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
         </div>
 
         {/* Offline Saved Password Manager */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 text-slate-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <HardDriveDownload className="h-5 w-5 text-purple-400" />
@@ -738,17 +769,23 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
           </p>
 
           <div className="mt-3 space-y-2">
-            {config.offlinePasswords.map((item) => (
+            {offlineList.map((item) => (
               <div
                 key={item.id}
                 className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs"
               >
                 <div>
                   <div className="font-semibold text-white">{item.label}</div>
-                  <div className="font-mono text-[10px] text-purple-300">{item.maskedPreview}</div>
+                  <div className="font-mono text-[10px] text-purple-300">{item.codePreview}</div>
                 </div>
-                <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
-                  Aktív
+                <span
+                  className={`rounded px-2 py-0.5 text-[10px] font-semibold ${
+                    item.used
+                      ? 'bg-slate-800 text-slate-400'
+                      : 'bg-emerald-500/15 text-emerald-300'
+                  }`}
+                >
+                  {item.used ? 'Felhasználva' : 'Aktív'}
                 </span>
               </div>
             ))}
@@ -789,7 +826,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
       </div>
 
       {/* Row 3: Per-Role Granular Policy Matrix */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-100">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
             <Users className="h-5 w-5 text-indigo-400" />
@@ -818,11 +855,11 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
-              {(Object.keys(ROLE_LABELS) as AuditRoleTarget[]).map((role) => (
+              {(Object.keys(ROLE_LABELS) as WpUserRole[]).map((role) => (
                 <tr key={role} className="hover:bg-slate-950/40">
                   <td className="py-3 pr-4 font-semibold text-white">{ROLE_LABELS[role]}</td>
                   {METHOD_META.map((m) => {
-                    const currentPolicy = config.rolePolicies[role][m.id];
+                    const currentPolicy = config.roleMatrix?.[role]?.[m.id] ?? 'optional';
                     return (
                       <td key={m.id} className="px-3 py-2.5">
                         <div className="inline-flex rounded-lg border border-slate-800 bg-slate-950 p-0.5">
@@ -857,7 +894,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
       {/* Row 4: IP Whitelist + Frontend Shortcode Self-Service Portal [wtk_auth_manager] */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* IP Whitelist */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-100">
           <div className="flex items-center gap-2.5">
             <Globe className="h-5 w-5 text-emerald-400" />
             <div>
@@ -888,7 +925,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
-            {config.whitelistedIps.map((ip) => (
+            {whitelistIps.map((ip) => (
               <span
                 key={ip}
                 className="inline-flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 font-mono text-xs text-emerald-300"
@@ -920,10 +957,10 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
               />
               <select
                 value={testUserRole}
-                onChange={(e) => setTestUserRole(e.target.value as AuditRoleTarget)}
+                onChange={(e) => setTestUserRole(e.target.value as WpUserRole)}
                 className="rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1.5 text-xs text-white"
               >
-                {(Object.keys(ROLE_LABELS) as AuditRoleTarget[]).map((r) => (
+                {(Object.keys(ROLE_LABELS) as WpUserRole[]).map((r) => (
                   <option key={r} value={r}>
                     {ROLE_LABELS[r]}
                   </option>
@@ -931,14 +968,14 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
               </select>
             </div>
             <div className="mt-2.5 text-xs">
-              {roleEval.bypassedByIp ? (
+              {roleEval.bypassedByIpWhitelist ? (
                 <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-400">
                   <CheckCircle2 className="h-4 w-4" />A megadott IP ({testClientIp}) fehérlistán van: nem kér hitelesítőt!
                 </span>
               ) : (
                 <span className="text-slate-300">
-                  Kötelező: <strong className="text-amber-300">{roleEval.requiredMethods.join(', ') || 'nincs'}</strong> ·
-                  Opcionális: <strong className="text-emerald-300">{roleEval.optionalMethods.join(', ') || 'nincs'}</strong> ·
+                  Kötelező: <strong className="text-amber-300">{roleEval.requiredMethods.join(', ') || 'nincs'}</strong> ·{' '}
+                  Opcionális: <strong className="text-emerald-300">{roleEval.optionalMethods.join(', ') || 'nincs'}</strong> ·{' '}
                   Tiltott: <strong className="text-rose-300">{roleEval.disabledMethods.join(', ') || 'nincs'}</strong>
                 </span>
               )}
@@ -947,7 +984,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
         </div>
 
         {/* Shortcode Self-Service Portal Preview [wtk_auth_manager] */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-100">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
               <Code2 className="h-5 w-5 text-indigo-400" />
@@ -1023,7 +1060,7 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
                 </strong>
               </span>
               <span className="font-mono text-[11px] text-emerald-400">
-                ✓ Készülék óra szinkronban ({config.manualTimeOffsetSec} mp)
+                ✓ Készülék óra szinkronban ({config.timeOffsetSeconds} mp)
               </span>
             </div>
           </div>

@@ -335,7 +335,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                     [wtk_auth_manager]
                   </td>
                   <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
-                    TOTP + {state.auth.passkeys.length} Passkey + {state.auth.offlinePasswords.length} Offline kód · Offset: {state.auth.manualTimeOffsetSec} mp
+                    TOTP + {(state.auth.passkeyCredentials ?? []).length} Passkey + {(state.auth.offlineSavedItems ?? []).length} Offline kód · Offset: {state.auth.timeOffsetSeconds} mp
                   </td>
                   <td className="py-2.5 px-4 font-mono text-slate-500">
                     REST: /wp-json/and-toolkit/v1/auth-sync-time
@@ -820,7 +820,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                     10. Hitelesítés: 2FA, Időszinkron, Passkey &amp; Offline Széf (v0.7.0)
                   </h3>
                   <div className="text-xs text-slate-500 font-mono">
-                    TOTP + {state.auth.passkeys.length} Passkey + {state.auth.offlinePasswords.length} Offline kód · Offset: {state.auth.manualTimeOffsetSec} mp
+                    TOTP + {(state.auth.passkeyCredentials ?? []).length} Passkey + {(state.auth.offlineSavedItems ?? []).length} Offline kód · Offset: {state.auth.timeOffsetSeconds} mp
                   </div>
                 </div>
               </div>

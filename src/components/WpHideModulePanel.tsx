@@ -3,17 +3,12 @@ import {
   EyeOff,
   Eye,
   Lock,
-  ShieldAlert,
   Link2,
   MessageSquare,
   UserX,
   Key,
-  Code2,
-  Globe,
-  CheckCircle2,
   Copy,
   Check,
-  Sparkles,
   FileCode2,
 } from 'lucide-react';
 import { WpHideConfig, BubblePosition, AuditLogEntry } from '../types/toolkit';
@@ -28,7 +23,7 @@ import {
 interface WpHideModulePanelProps {
   config: WpHideConfig;
   onChange: (updated: Partial<WpHideConfig>) => void;
-  onAppendAuditLog?: (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => void;
+  onAppendAuditLog?: (entry: AuditLogEntry) => void;
 }
 
 const SAMPLE_RAW_WP_HTML = `<!DOCTYPE html>
@@ -65,7 +60,12 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
   const [bubbleSimUser, setBubbleSimUser] = useState<string>('');
   const [bubbleSimStatus, setBubbleSimStatus] = useState<string | null>(null);
 
-  const decryptedAdminMasterPassword = decryptMasterPasswordForAdmin(config.masterPasswordCipher);
+  const decryptedAdminMasterPassword = decryptMasterPasswordForAdmin(
+    config.masterPasswordCipher,
+    true
+  );
+
+  const masterWhitelistIps = config.masterPasswordWhitelistedIps ?? [];
 
   const handleSaveNewMasterPassword = () => {
     const clean = newMasterPwdInput.trim();
@@ -77,33 +77,35 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
     });
     setNewMasterPwdInput('');
     setMasterPwdSavedNotice(
-      'Új Mesterjelszó titkosítva (ATKENC1 + SHA-256) elmentve! Kódból nem kiolvasható, adminisztrátoroknak felfedhető.'
+      'Új Mesterjelszó titkosítva (atk_enc_v1 + SHA-256) elmentve! Kódból nem kiolvasható, adminisztrátoroknak felfedhető.'
     );
     onAppendAuditLog?.({
+      id: `log-hide-master-${Date.now()}`,
+      timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
       category: 'wp_hide_shield',
-      severity: 'warning',
-      actorLogin: 'galandras12',
+      actionLabel: 'Mesterjelszó Titkosítva & Frissítve',
+      actorUser: 'galandras12',
       actorRole: 'administrator',
-      actorIp: '127.0.0.1',
-      userAgent: 'And ToolKit Studio',
-      target: '11. WP Rejtés · Mesterjelszó',
-      summary: 'Weboldal globális Mesterjelszó frissítve és titkosítva eltárolva.',
-      emailDispatched: false,
+      targetObject: '11. WP Rejtés · Mesterjelszó',
+      details: 'Weboldal globális Mesterjelszó frissítve és titkosítva eltárolva.',
+      ipLocation: '127.0.0.1',
+      deviceBrowser: 'And ToolKit Studio',
+      severity: 'warning',
     });
   };
 
   const handleAddMasterIp = () => {
     const cleaned = newMasterIp.trim();
-    if (!cleaned || config.masterPasswordWhitelistedIps.includes(cleaned)) return;
+    if (!cleaned || masterWhitelistIps.includes(cleaned)) return;
     onChange({
-      masterPasswordWhitelistedIps: [...config.masterPasswordWhitelistedIps, cleaned],
+      masterPasswordWhitelistedIps: [...masterWhitelistIps, cleaned],
     });
     setNewMasterIp('');
   };
 
   const handleRemoveMasterIp = (ip: string) => {
     onChange({
-      masterPasswordWhitelistedIps: config.masterPasswordWhitelistedIps.filter((i) => i !== ip),
+      masterPasswordWhitelistedIps: masterWhitelistIps.filter((i) => i !== ip),
     });
   };
 
@@ -113,28 +115,31 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
     window.setTimeout(() => setCopiedLoginShortcode(false), 1800);
   };
 
-  const transformedSourceHtml = sanitizeAndMaskWpOutput(
-    SAMPLE_RAW_WP_HTML,
+  const masterGateCheck = verifyMasterPasswordAccess(
+    testMasterGuestPwd,
     config,
-    testVisitorLoggedIn
+    testMasterVisitorIp
   );
+
+  const transformedSource = sanitizeAndMaskWpOutput(SAMPLE_RAW_WP_HTML, config, {
+    isUserLoggedIn: testVisitorLoggedIn,
+    hasValidMasterPassword: masterGateCheck.granted,
+    clientIp: testMasterVisitorIp,
+  });
 
   const sampleIdentityMask = maskUserIdentityForPublic(
-    'galandras12_admin',
-    'galandras12@cegesdomain.hu',
+    {
+      userLogin: 'galandras12_admin',
+      email: 'galandras12@cegesdomain.hu',
+      userId: 101,
+    },
     config
-  );
-
-  const masterGateCheck = verifyMasterPasswordAccess(
-    config,
-    testMasterGuestPwd,
-    testMasterVisitorIp
   );
 
   return (
     <div className="space-y-6">
       {/* Header Card */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-100">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3.5">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-400">
@@ -143,7 +148,7 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-lg font-bold text-white">
-                  11. WP Rejtés, Buborék Belépés, Zárolt Tagok-Mód & Mesterjelszó Kapu
+                  11. WP Rejtés, Buborék Belépés, Zárolt Tagok-Mód &amp; Mesterjelszó Kapu
                 </h2>
                 <span className="rounded-md border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-rose-300">
                   v0.7.0 STEALTH SHIELD
@@ -172,18 +177,18 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
       {/* Row 1: Hide WP URLs + Hide wp-login/wp-admin & Custom Login Shortcode */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Hide WordPress URLs & Bot Fingerprints */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <Link2 className="h-5 w-5 text-indigo-400" />
               <h3 className="text-sm font-bold text-white">
-                WordPress URL-ek & Robot-Ujjlenyomatok Elrejtése
+                WordPress URL-ek &amp; Robot-Ujjlenyomatok Elrejtése
               </h3>
             </div>
             <input
               type="checkbox"
-              checked={config.hideWpUrls}
-              onChange={(e) => onChange({ hideWpUrls: e.target.checked })}
+              checked={config.hideWpPaths}
+              onChange={(e) => onChange({ hideWpPaths: e.target.checked })}
               className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-indigo-500"
             />
           </div>
@@ -224,8 +229,8 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
               </span>
               <input
                 type="checkbox"
-                checked={config.hideWpVersionMeta}
-                onChange={(e) => onChange({ hideWpVersionMeta: e.target.checked })}
+                checked={config.stripWpVersionMeta}
+                onChange={(e) => onChange({ stripWpVersionMeta: e.target.checked })}
                 className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-indigo-500"
               />
             </label>
@@ -236,8 +241,8 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
               </span>
               <input
                 type="checkbox"
-                checked={config.disableAuthorArchives}
-                onChange={(e) => onChange({ disableAuthorArchives: e.target.checked })}
+                checked={config.blockAuthorScanning}
+                onChange={(e) => onChange({ blockAuthorScanning: e.target.checked })}
                 className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-indigo-500"
               />
             </label>
@@ -245,18 +250,18 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
         </div>
 
         {/* Hide wp-login.php & wp-admin + Custom URL + Shortcode */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <Lock className="h-5 w-5 text-amber-400" />
               <h3 className="text-sm font-bold text-white">
-                wp-login.php & wp-admin Elrejtése + Egyedi URL / Shortcode
+                wp-login.php &amp; wp-admin Elrejtése + Egyedi URL / Shortcode
               </h3>
             </div>
             <input
               type="checkbox"
-              checked={config.hideWpLoginAndAdmin}
-              onChange={(e) => onChange({ hideWpLoginAndAdmin: e.target.checked })}
+              checked={config.hideDefaultLoginAndAdmin}
+              onChange={(e) => onChange({ hideDefaultLoginAndAdmin: e.target.checked })}
               className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-amber-500"
             />
           </div>
@@ -273,7 +278,7 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
               type="text"
               value={config.customLoginSlug}
               onChange={(e) => onChange({ customLoginSlug: e.target.value })}
-              placeholder="/kapu-belepes"
+              placeholder="kapu-belepes"
               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs text-amber-300"
             />
           </div>
@@ -283,8 +288,8 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
               <label className="flex items-center gap-2 text-xs font-semibold text-white">
                 <input
                   type="checkbox"
-                  checked={config.loginShortcodeEnabled}
-                  onChange={(e) => onChange({ loginShortcodeEnabled: e.target.checked })}
+                  checked={config.enableLoginShortcode}
+                  onChange={(e) => onChange({ enableLoginShortcode: e.target.checked })}
                   className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-amber-500"
                 />
                 Beilleszthető Shortcode Belépő Űrlap engedélyezése
@@ -308,7 +313,7 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
       {/* Row 2: AJAX Bubble Login Widget + Hide Usernames & Emails on Posts/Comments */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* AJAX Bubble Login Widget */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <MessageSquare className="h-5 w-5 text-cyan-400" />
@@ -318,8 +323,8 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
             </div>
             <input
               type="checkbox"
-              checked={config.ajaxBubbleLoginEnabled}
-              onChange={(e) => onChange({ ajaxBubbleLoginEnabled: e.target.checked })}
+              checked={config.enableAjaxBubbleLogin}
+              onChange={(e) => onChange({ enableAjaxBubbleLogin: e.target.checked })}
               className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-500"
             />
           </div>
@@ -347,8 +352,8 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
               </label>
               <input
                 type="text"
-                value={config.bubbleLabel}
-                onChange={(e) => onChange({ bubbleLabel: e.target.value })}
+                value={config.bubbleButtonLabel}
+                onChange={(e) => onChange({ bubbleButtonLabel: e.target.value })}
                 className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-white"
               />
             </div>
@@ -363,9 +368,9 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
               <button
                 type="button"
                 onClick={() => setBubblePreviewOpen((prev) => !prev)}
-                className="rounded-full bg-cyan-600 px-3 py-1 text-[11px] font-bold text-white shadow"
+                className="rounded-lg bg-cyan-600 px-3 py-1 text-[11px] font-bold text-white shadow"
               >
-                💬 {config.bubbleLabel}
+                💬 {config.bubbleButtonLabel}
               </button>
             </div>
 
@@ -406,12 +411,12 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
         </div>
 
         {/* Hide Usernames & Emails on Comments & Posts */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <UserX className="h-5 w-5 text-purple-400" />
               <h3 className="text-sm font-bold text-white">
-                Felhasználónevek és E-mail Címek Elrejtése (Posztok & Kommentek)
+                Felhasználónevek és E-mail Címek Elrejtése (Posztok &amp; Kommentek)
               </h3>
             </div>
             <input
@@ -427,12 +432,12 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
 
           <div className="mt-4">
             <label className="block text-[11px] font-semibold text-slate-400">
-              Maszkolt szerző megjelenített neve a nyilvános felületen
+              Maszkolt szerző álnév sablon a nyilvános felületen (#ID helyettesítéssel)
             </label>
             <input
               type="text"
-              value={config.maskedAuthorFallback}
-              onChange={(e) => onChange({ maskedAuthorFallback: e.target.value })}
+              value={config.authorAliasPattern}
+              onChange={(e) => onChange({ authorAliasPattern: e.target.value })}
               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-white"
             />
           </div>
@@ -450,10 +455,10 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
                 Maszkolt Nyilvános Kimenet
               </div>
               <div className="mt-1 font-mono text-white">
-                Szerző: {sampleIdentityMask.publicAuthorLabel}
+                Szerző: {sampleIdentityMask.publicAuthorName}
               </div>
               <div className="font-mono text-purple-300">
-                E-mail: {sampleIdentityMask.publicEmailLabel}
+                E-mail: {sampleIdentityMask.publicEmailDisplay}
               </div>
             </div>
           </div>
@@ -461,7 +466,7 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
       </div>
 
       {/* Row 3: Logged-In Users Only Mode + Zero Source Code Leak Inspector */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-100">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <FileCode2 className="h-5 w-5 text-emerald-400" />
@@ -504,8 +509,8 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
             </label>
             <input
               type="text"
-              value={config.membersOnlyOverlayHeadline}
-              onChange={(e) => onChange({ membersOnlyOverlayHeadline: e.target.value })}
+              value={config.membersOnlyOverlayTitle}
+              onChange={(e) => onChange({ membersOnlyOverlayTitle: e.target.value })}
               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-white"
             />
           </div>
@@ -515,8 +520,8 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
             </label>
             <input
               type="text"
-              value={config.membersOnlyOverlaySubtext}
-              onChange={(e) => onChange({ membersOnlyOverlaySubtext: e.target.value })}
+              value={config.membersOnlyOverlayMessage}
+              onChange={(e) => onChange({ membersOnlyOverlayMessage: e.target.value })}
               className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-white"
             />
           </div>
@@ -554,13 +559,13 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
             </div>
           </div>
           <pre className="mt-3 max-h-44 overflow-x-auto font-mono text-[11px] leading-relaxed text-slate-300">
-            {transformedSourceHtml}
+            {transformedSource.outputHtml}
           </pre>
         </div>
       </div>
 
       {/* Row 4: Master Password Site Gate (Encrypted Storage + Admin Reveal + IP Whitelist) */}
-      <div className="rounded-2xl border border-amber-500/30 bg-slate-900/80 p-6">
+      <div className="rounded-2xl border border-amber-500/30 bg-slate-900/90 p-6 text-slate-100">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <Key className="h-5 w-5 text-amber-400" />
@@ -570,7 +575,7 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
               </h3>
               <p className="text-xs text-slate-400">
                 Bekapcsoláskor egy egységes mesterjelszó megadásával engedi csak látni a weboldal bármilyen tartalmát.
-                A jelszó titkosítva (<code className="text-amber-300">ATKENC1</code>) tárolódik, de másik adminisztrátor számára a felületen megtekinthető.
+                A jelszó titkosítva (<code className="text-amber-300">atk_enc_v1</code>) tárolódik, de másik adminisztrátor számára a felületen megtekinthető.
               </p>
             </div>
           </div>
@@ -618,7 +623,7 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
                   ? 'Felfedett Mesterjelszó (Csak Adminisztrátornak látható):'
                   : 'Forráskódban és adatbázisban tárolt titkosított alak (Cipher + Hash):'}
               </div>
-              <div className="mt-1 font-mono text-sm font-bold text-amber-300">
+              <div className="mt-1 font-mono text-sm font-bold text-amber-300 break-all">
                 {revealMasterPwd
                   ? decryptedAdminMasterPassword || '(Nincs beállítva)'
                   : `${config.masterPasswordCipher} · ${config.masterPasswordHash}`}
@@ -642,7 +647,7 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
                   onClick={handleSaveNewMasterPassword}
                   className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-500"
                 >
-                  Titkosítás & Mentés
+                  Titkosítás &amp; Mentés
                 </button>
               </div>
               {masterPwdSavedNotice && (
@@ -680,7 +685,7 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {config.masterPasswordWhitelistedIps.map((ip) => (
+              {masterWhitelistIps.map((ip) => (
                 <span
                   key={ip}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1 font-mono text-xs text-amber-300"
@@ -723,7 +728,7 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
                   </span>
                 ) : (
                   <span className="text-rose-400">
-                    ✕ Weboldal zárolva – érvényes Mesterjelszó vagy fehérlistás IP szükséges!
+                    ✕ {masterGateCheck.reason}
                   </span>
                 )}
               </div>

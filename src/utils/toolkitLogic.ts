@@ -1,4 +1,4 @@
-import { PLUGIN_TEMPLATE, PLUGIN_DEFAULTS_MARKER } from './pluginTemplate';
+import { PLUGIN_TEMPLATE, PLUGIN_DEFAULTS_MARKER, PLUGIN_VERSION } from './pluginTemplate';
 import {
   AuditEventCategory,
   AuditLogConfig,
@@ -36,7 +36,7 @@ export const INITIAL_POSTS: ScheduledPostItem[] = [
   },
   {
     id: 'post-102',
-    title: 'And ToolKit v0.7.0 Kiadási Csomag: Hitelesítés (2FA/Passkey) & WP Rejtés (ZIP)',
+    title: 'And ToolKit v0.7.1 Kiadási Csomag: Hitelesítés (2FA/Passkey) & WP Rejtés (ZIP)',
     date: '2026-11-09',
     time: '10:30',
     category: 'Kiadás',
@@ -429,7 +429,7 @@ export const INITIAL_STATE: ToolkitState = {
     sizePreset: 'standard',
     fontStyle: 'display-bold',
     animation: 'pulse-glow',
-    badgeText: 'ÚJ VERZIÓ · v0.7.0',
+    badgeText: 'ÚJ VERZIÓ · v0.7.1',
     headline: 'And ToolKit v0.7.0: 2FA/Passkey Hitelesítés Időszinkronnal & Teljes WP Rejtés Modul!',
     subtext: '2FA TOTP + Készülék Időszinkron, Passkey, E-mail OTP, Offline Kódok, Frissítés-védelem, [wtk_auth_manager] Shortcode, WP URL Álcázás, AJAX Buborék Belépés és Titkosított Mesterjelszó.',
     ctaLabel: 'Hitelesítés & WP Rejtés',
@@ -941,7 +941,7 @@ export function formatAuditLogsForExport(
   if (format === 'txt') {
     const banner = [
       '================================================================================',
-      'AND TOOLKIT v0.7.0 — WORDPRESS 7.1 BIZTONSÁGI ÉS ESEMÉNYNAPLÓ (.TXT EXPORT)',
+      'AND TOOLKIT v0.7.1 — WORDPRESS 7.1 BIZTONSÁGI ÉS ESEMÉNYNAPLÓ (.TXT EXPORT)',
       `Generálva: 2026-11-03 · Bejegyzések száma: ${entries.length}`,
       '================================================================================',
       '',
@@ -1168,8 +1168,8 @@ export function buildUpdateNotificationEmailPreview(config: AuditLogConfig): {
   );
 
   const subject = config.criticalOnlyEmails
-    ? `[And ToolKit v0.7.0 · CRITICAL ONLY] Kritikus WP Mag Frissítés & Fájlrendszer Riasztás (${filtered.length} mag frissítés)`
-    : `[And ToolKit v0.7.0] WordPress Frissítési Értesítő (${filtered.length} komponens) & Napi Összefoglaló (${config.dailyDigestTime})`;
+    ? `[And ToolKit v0.7.1 · CRITICAL ONLY] Kritikus WP Mag Frissítés & Fájlrendszer Riasztás (${filtered.length} mag frissítés)`
+    : `[And ToolKit v0.7.1] WordPress Frissítési Értesítő (${filtered.length} komponens) & Napi Összefoglaló (${config.dailyDigestTime})`;
 
   const body = [
     `Címzett: ${config.recipientEmail || '(webhely admin e-mail címe)'}`,
@@ -1203,7 +1203,7 @@ export function buildUpdateNotificationEmailPreview(config: AuditLogConfig): {
             : ['• Az elmúlt 24 órában nem történt automatikus háttérfrissítés.']),
         ]),
     '------------------------------------------------------------------------',
-    'And ToolKit v0.7.0 · WordPress 7.1 Biztonsági Napló & E-mail Értesítő Modul',
+    'And ToolKit v0.7.1 · WordPress 7.1 Biztonsági Napló & E-mail Értesítő Modul',
   ].join('\n');
 
   return {
@@ -1961,16 +1961,38 @@ function phpList(items: string[]): string {
   return `[ ${items.map(phpStr).join(', ')} ]`;
 }
 
-function phpRoleMatrix(matrix: RoleAuthMatrix): string {
+function phpRolePolicies(matrix: RoleAuthMatrix): string {
   const roles: WpUserRole[] = ['administrator', 'editor', 'author', 'contributor', 'subscriber'];
-  const entries = roles.map((r) => {
-    const m = matrix[r];
-    return `${phpStr(r)} => [ 'totp' => ${phpStr(m.totp)}, 'passkey' => ${phpStr(
-      m.passkey
-    )}, 'email' => ${phpStr(m.email)}, 'offline' => ${phpStr(m.offline)} ]`;
-  });
+  const entries = roles.map((r) => `${phpStr(r)} => [ 'totp' => ${phpStr(matrix[r].totp)} ]`);
   return `[ ${entries.join(', ')} ]`;
 }
+
+/**
+ * A kiadott (gyökér) and-toolkit.php biztonságos telepítési alapértékei. A Studio-demó adatait (próbakulcsok, jelszó-hash,
+ * fehérlistás IP-k, promóciós banner, bekapcsolt rejtés/kapuk) NEM szabad minden webhelyre kiszállítani.
+ */
+export const RELEASE_STATE: ToolkitState = (() => {
+  const s = structuredClone(INITIAL_STATE);
+  s.banner = { ...s.banner, enabled: false, ctaUrl: '' };
+  s.optimizer = { ...s.optimizer, pageCacheEnabled: false };
+  s.auditLog = { ...s.auditLog, recipientEmail: '', loginEmailEnabled: false };
+  s.gdpr = {
+    ...s.gdpr,
+    categories: s.gdpr.categories.map((c) => ({ ...c, defaultEnabled: c.required })),
+  };
+  s.captcha = { ...s.captcha, recaptchaSiteKey: '', recaptchaSecretKey: '', turnstileSiteKey: '', turnstileSecretKey: '' };
+  s.auth = { ...s.auth, whitelistedIps: [] };
+  s.wpHide = {
+    ...s.wpHide,
+    enabled: false,
+    membersOnlyMode: false,
+    masterPasswordEnabled: false,
+    masterPasswordCipher: '',
+    masterPasswordHash: '',
+    masterPasswordWhitelistedIps: [],
+  };
+  return s;
+})();
 
 /**
  * A Studio beállításaiból előállítja a PHP plugin alapértelmezett konfigurációját (get_defaults()).
@@ -2091,54 +2113,33 @@ export function buildPluginDefaultsPhp(state: ToolkitState): string {
       L('protect_register', phpBool(state.captcha.protectRegister), 25),
       L('protect_lost_password', phpBool(state.captcha.protectLostPassword), 25),
       L('protect_comments', phpBool(state.captcha.protectComments), 25),
-      L('protect_rest_endpoints', phpBool(state.captcha.protectRestEndpoints), 25),
       L('bypass_logged_in_admins', phpBool(state.captcha.bypassLoggedInAdmins), 25),
       L('log_blocked_attempts', phpBool(state.captcha.logBlockedAttempts), 25),
     ]),
+    // Hitelesítés: a PHP-ban a TOTP + visszaállító kódok működnek; a titkos kulcsok felhasználónként, titkosítva, user meta-ban élnek (soha nem a konfigban).
     group('auth', [
-      L('enabled', phpBool(state.auth.enabled), 28),
-      L('totp_enabled', phpBool(state.auth.totpEnabled), 28),
-      L('totp_issuer', phpStr(state.auth.totpIssuer), 28),
-      L('totp_secret_key', phpStr(state.auth.totpSecretKey), 28),
-      L('passkey_enabled', phpBool(state.auth.passkeyEnabled), 28),
-      L('passkey_rp_id', phpStr(state.auth.passkeyRpId), 28),
-      L('email_auth_enabled', phpBool(state.auth.emailAuthEnabled), 28),
-      L('email_otp_expiry_mins', phpInt(state.auth.emailOtpExpiryMinutes, 10), 28),
-      L('offline_passwords_enabled', phpBool(state.auth.offlinePasswordsEnabled), 28),
-      L('time_drift_enabled', phpBool(state.auth.timeDriftCorrectionEnabled), 28),
-      L('time_offset_seconds', phpInt(state.auth.timeOffsetSeconds, 0), 28),
-      L('manual_server_time_iso', phpStr(state.auth.manualServerTimeIso), 28),
-      L('tolerance_windows', phpInt(state.auth.toleranceWindows, 2), 28),
-      L('preserve_on_update', phpBool(state.auth.preserveCredentialsOnUpdate), 28),
-      L('enable_shortcode', phpBool(state.auth.enableFrontendShortcode), 28),
-      L('shortcode_page_slug', phpStr(state.auth.shortcodePageSlug), 28),
-      L('whitelisted_ips', phpList(state.auth.whitelistedIps), 28),
-      L('role_matrix', phpRoleMatrix(state.auth.roleMatrix), 28),
+      L('enabled', phpBool(state.auth.enabled), 30),
+      L('totp_enabled', phpBool(state.auth.totpEnabled), 30),
+      L('totp_issuer', phpStr(state.auth.totpIssuer), 30),
+      L('time_drift_tolerance_windows', phpInt(Math.max(0, Math.min(5, state.auth.toleranceWindows)), 1), 30),
+      L('whitelisted_ips', phpList(state.auth.whitelistedIps), 30),
+      L('role_policies', phpRolePolicies(state.auth.roleMatrix), 30),
     ]),
+    // WP Rejtés: a mesterjelszó hash SOHA nem kerül a generált fájlba (csak az admin felületen állítható be).
     group('wp_hide', [
-      L('enabled', phpBool(state.wpHide.enabled), 28),
-      L('hide_wp_paths', phpBool(state.wpHide.hideWpPaths), 28),
-      L('custom_content_slug', phpStr(state.wpHide.customContentSlug), 28),
-      L('custom_includes_slug', phpStr(state.wpHide.customIncludesSlug), 28),
-      L('custom_uploads_slug', phpStr(state.wpHide.customUploadsSlug), 28),
-      L('hide_wp_json', phpBool(state.wpHide.hideWpJsonEndpoint), 28),
-      L('custom_rest_prefix', phpStr(state.wpHide.customRestPrefix), 28),
-      L('strip_wp_version_meta', phpBool(state.wpHide.stripWpVersionMeta), 28),
-      L('block_author_scanning', phpBool(state.wpHide.blockAuthorScanning), 28),
-      L('hide_login_and_admin', phpBool(state.wpHide.hideDefaultLoginAndAdmin), 28),
-      L('custom_login_slug', phpStr(state.wpHide.customLoginSlug), 28),
-      L('enable_login_shortcode', phpBool(state.wpHide.enableLoginShortcode), 28),
-      L('enable_ajax_bubble_login', phpBool(state.wpHide.enableAjaxBubbleLogin), 28),
-      L('bubble_position', phpStr(state.wpHide.bubblePosition), 28),
-      L('bubble_button_label', phpStr(state.wpHide.bubbleButtonLabel), 28),
-      L('members_only_mode', phpBool(state.wpHide.membersOnlyMode), 28),
-      L('strip_source_for_guests', phpBool(state.wpHide.stripHtmlSourceForGuests), 28),
-      L('hide_usernames_emails', phpBool(state.wpHide.hideUsernamesAndEmails), 28),
-      L('author_alias_pattern', phpStr(state.wpHide.authorAliasPattern), 28),
-      L('master_password_enabled', phpBool(state.wpHide.masterPasswordEnabled), 28),
-      L('master_password_cipher', phpStr(state.wpHide.masterPasswordCipher), 28),
-      L('master_password_hash', phpStr(state.wpHide.masterPasswordHash), 28),
-      L('master_whitelisted_ips', phpList(state.wpHide.masterPasswordWhitelistedIps), 28),
+      L('enabled', phpBool(state.wpHide.enabled), 33),
+      L('strip_wp_version', phpBool(state.wpHide.stripWpVersionMeta), 33),
+      L('block_author_scanning', phpBool(state.wpHide.blockAuthorScanning), 33),
+      L('hide_usernames_emails', phpBool(state.wpHide.hideUsernamesAndEmails), 33),
+      L('author_alias', phpStr(state.wpHide.authorAliasPattern), 33),
+      L('members_only_mode', phpBool(state.wpHide.membersOnlyMode), 33),
+      L('master_password_enabled', phpBool(state.wpHide.masterPasswordEnabled), 33),
+      L('master_password_hash', "''", 33),
+      L('master_password_whitelisted_ips', phpList(state.wpHide.masterPasswordWhitelistedIps), 33),
+      L('enable_login_shortcode', phpBool(state.wpHide.enableLoginShortcode), 33),
+      L('enable_ajax_bubble_login', phpBool(state.wpHide.enableAjaxBubbleLogin), 33),
+      L('bubble_position', phpStr(state.wpHide.bubblePosition), 33),
+      L('bubble_button_label', phpStr(state.wpHide.bubbleButtonLabel), 33),
     ]),
     group('performance', [
       L('defer_scripts', phpBool(state.performance.deferScripts)),
@@ -2159,6 +2160,51 @@ export interface AuditCheckItem {
   title: string;
   description: string;
   passed: boolean;
+}
+
+/**
+ * Statikusan összeveti a generált PHP-ban az alapértékek (get_defaults), a beállítás-séma (settings_schema)
+ * és a kódban olvasott kulcsokat ($cap['x'], $auth['x'] ...). A 0.7.0-ban 16 séma-kulcs és 13 kódbeli kulcs hiányzott
+ * az alapértékekből, ezért a beállítások nem mentődtek – ez a függvény ezt a hibaosztályt fogja meg.
+ */
+export function findConfigKeyMismatches(php: string): {
+  defaultsFound: number;
+  schemaMissing: string[];
+  codeMissing: string[];
+} {
+  const defaults = new Map<string, Set<string>>();
+  const dStart = php.indexOf('public static function get_defaults()');
+  const dEnd = php.indexOf('public static function get_config()');
+  let current: string | null = null;
+  for (const line of php.slice(dStart, dEnd).split('\n')) {
+    const g = /^ {12}'(\w+)'\s*=>\s*\[\s*$/.exec(line);
+    if (g) { current = g[1]; defaults.set(current, new Set()); continue; }
+    if (/^ {12}\],?\s*$/.test(line)) { current = null; continue; }
+    const k = /^ {16}'(\w+)'\s*=>/.exec(line);
+    if (k && current) defaults.get(current)!.add(k[1]);
+  }
+  const schemaMissing: string[] = [];
+  const sStart = php.indexOf('private static function settings_schema()');
+  const sEnd = php.indexOf('public static function sanitize_settings');
+  current = null;
+  for (const line of php.slice(sStart, sEnd).split('\n')) {
+    const g = /^ {12}'(\w+)'\s*=>\s*\[\s*$/.exec(line);
+    if (g) { current = g[1]; continue; }
+    if (/^ {12}\],?\s*$/.test(line)) { current = null; continue; }
+    const k = /^ {16}'(\w+)'\s*=>\s*\[\s*'(\w+)'/.exec(line);
+    if (k && current && k[2] !== 'newpass' && !defaults.get(current)?.has(k[1])) schemaMissing.push(`${current}.${k[1]}`);
+  }
+  const varToGroup: Record<string, string> = {
+    cap: 'captcha', auth: 'auth', hide: 'wp_hide', audit: 'audit_log', opt: 'optimizer', gdpr: 'gdpr',
+  };
+  const codeMissing = new Set<string>();
+  for (const [v, group] of Object.entries(varToGroup)) {
+    const re = new RegExp("\\$" + v + "\\[\\s*'(\\w+)'\\s*\\]", 'g');
+    for (const m of php.matchAll(re)) {
+      if (defaults.has(group) && !defaults.get(group)!.has(m[1])) codeMissing.add(`${group}.${m[1]}`);
+    }
+  }
+  return { defaultsFound: defaults.size, schemaMissing, codeMissing: [...codeMissing] };
 }
 
 /**
@@ -2191,12 +2237,12 @@ export function auditWordPressPhpCompatibility(
     'render_security_badge_shortcode', 'enqueue_captcha_login_assets', 'render_captcha_field',
     'verify_captcha_token', 'verify_login_captcha', 'verify_registration_captcha',
     'verify_lostpassword_captcha', 'verify_comment_captcha', 'render_captcha_badge_shortcode',
-    'preserve_auth_credentials_on_update', 'verify_totp_with_time_drift',
-    'evaluate_user_auth_policy', 'render_auth_manager_shortcode',
-    'handle_auth_time_sync', 'enforce_wp_hide_access_gate',
-    'filter_masked_author_name', 'filter_masked_comment_author',
-    'render_custom_login_shortcode', 'render_ajax_bubble_login_widget',
-    'handle_ajax_bubble_login', 'decrypt_master_password_for_admin',
+    'verify_totp_with_time_drift', 'evaluate_user_auth_policy', 'enforce_totp_login',
+    'render_totp_login_field', 'render_profile_2fa', 'save_profile_2fa', 'render_2fa_required_notice',
+    'render_auth_manager_shortcode', 'apply_wp_hide', 'strip_version_query', 'filter_rest_endpoints',
+    'enforce_wp_hide_access_gate', 'filter_rest_access', 'filter_masked_author_name',
+    'filter_masked_comment_author', 'render_custom_login_shortcode', 'render_ajax_bubble_login_widget',
+    'handle_ajax_bubble_login',
     'render_global_info_banner', 'render_gdpr_footer_banner',
     'register_rest_routes', 'handle_ajax_search', 'increment_download_counter',
     'increment_visit_counter', 'handle_cookie_consent', 'handle_system_optimization',
@@ -2228,25 +2274,25 @@ export function auditWordPressPhpCompatibility(
     {
       id: 'php80-match-expression',
       category: 'PHP 8.0+',
-      title: 'PHP 8.0 match kifejezések és verzió-konstans (v0.7.0)',
+      title: 'PHP 8.0 match kifejezések és verzió-konstans (v0.7.1)',
       description:
         'A belépési értesítő, a banner hatókör és a beállítás-szanitizálás típusbiztos match () kifejezést használ; VERSION = 0.7.0.',
       passed: has(
         "match ( $audit['login_email_scope'] )",
         "match ( $config['visibility_scope'] )",
         'match ( $type )',
-        "public const VERSION     = '0.7.0';"
+        `public const VERSION     = '${PLUGIN_VERSION}';`
       ),
     },
     {
       id: 'wp71-header-meta',
       category: 'WordPress 7.1',
-      title: 'WordPress fejléc és metaadat (Requires at least: 6.3, Version: 0.7.0)',
+      title: 'WordPress fejléc és metaadat (Requires at least: 6.3)',
       description:
-        'Plugin Name, Version: 0.7.0, Requires at least: 6.3 (script strategy API), Requires PHP, Tested up to, Author, License URI és Domain Path.',
+        'Plugin Name, Version, Requires at least: 6.3 (script strategy API), Requires PHP, Tested up to, Author, License URI és Domain Path.',
       passed: has(
         'Plugin Name:       And ToolKit',
-        'Version:           0.7.0',
+        `Version:           ${PLUGIN_VERSION}`,
         'Requires at least: 6.3',
         'Tested up to:      7.1',
         'Author:            galandras12+AI',
@@ -2271,9 +2317,9 @@ export function auditWordPressPhpCompatibility(
           "add_shortcode( 'wtk_auth_manager'",
           "add_shortcode( 'wtk_custom_login'"
         ) &&
-        ['/search', '/track-download', '/track-visit', '/cookie-consent', '/optimize', '/audit-export', '/auth-sync-time', '/bubble-login'].every(
+        ['/search', '/track-download', '/track-visit', '/cookie-consent', '/optimize', '/audit-export'].every(
           (route) => phpCode.includes(`'${route}'`)
-        ),
+        ) && hasNone("'/auth-sync-time'", "'/bubble-login'"),
     },
     {
       id: 'audit-log-storage-export',
@@ -2314,60 +2360,77 @@ export function auditWordPressPhpCompatibility(
     {
       id: 'captcha-bot-protection',
       category: 'Biztonság',
-      title: 'Botvédelem: Google reCAPTCHA v3 & Cloudflare Turnstile (állítható küszöb)',
+      title: 'Botvédelem: reCAPTCHA v3 / Turnstile – action- és hostname-ellenőrzés, kompatibilis, nem zár ki',
       description:
-        'Választható Google reCAPTCHA v3 és Cloudflare Turnstile siteverify ellenőrzés (wp_remote_post), 0.1–0.9 észlelési küszöb (score_threshold), védett login/regisztráció/jelszó/komment horgok és Audit Napló integráció.',
+        'siteverify ellenőrzés a reCAPTCHA action (atk_submit) és hostname értékével, token-frissítés beküldéskor, csak böngészős űrlapokon érvényesül (XML-RPC/REST/WP-CLI nem), a kijelentkezett-only komment mező miatt belépett felhasználót nem blokkol, szolgáltatói hálózati hiba esetén fail-open (szűrhető), nincs beégetett demó kulcs.',
       passed:
         has(
           'https://www.google.com/recaptcha/api/siteverify',
           'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-          'verify_captcha_token(',
-          "add_filter( 'authenticate'",
+          "'atk_submit' === (string) ( $body['action']",
+          'atkCaptchaRefresh',
+          '! self::is_form_login()',
+          'is_user_logged_in() || self::captcha_should_bypass()',
+          'and_toolkit_captcha_fail_open',
           "add_filter( 'registration_errors'",
           "add_action( 'lostpassword_post'",
-          "add_filter( 'preprocess_comment'",
-          "'score_threshold'",
           "'bot_protection'"
         ) &&
+        hasNone('_AndToolKit_', 'Demo060') &&
         state.captcha.scoreThreshold >= 0.1 &&
         state.captcha.scoreThreshold <= 0.9,
     },
     {
-      id: 'auth-totp-passkey-shortcode',
+      id: 'auth-totp-recovery',
       category: 'Biztonság',
-      title: 'Hitelesítés (v0.7.0): 2FA TOTP + Időszinkron, Passkey, E-mail, Offline kódok, Frissítés-védelem & Shortcode',
+      title: 'Hitelesítés: valódi TOTP (base32, RFC 6238) + visszaállító kódok, belépéskor kikényszerítve',
       description:
-        '2FA TOTP szerver-kliens időeltolás korrekcióval (verify_totp_with_time_drift), Passkey (WebAuthn), E-mail OTP, Offline mentett jelszavak, frissítés-biztos megőrzés (preserve_auth_credentials_on_update), rang-mátrix, IP fehérlista és [wtk_auth_manager] önkiszolgáló rövidkód.',
+        'A titkos kulcs felhasználónként, titkosítva (libsodium secretbox) él a user meta-ban; base32 dekódolás, újrajátszás elleni számláló, próbálkozás-zár, hashelt egyszer használatos visszaállító kódok, CIDR-es IP-mentesség. Nincs beégetett kulcs, fehérlistás IP vagy idő-szinkron végpont.',
       passed:
         has(
-          'preserve_auth_credentials_on_update(',
-          'verify_totp_with_time_drift(',
-          'evaluate_user_auth_policy(',
-          'render_auth_manager_shortcode(',
-          'handle_auth_time_sync(',
-          "'time_offset_seconds'",
-          "'role_matrix'",
-          "'whitelisted_ips'"
-        ) && Boolean(state.auth.preserveCredentialsOnUpdate),
+          'base32_decode(',
+          'sodium_crypto_secretbox(',
+          "add_filter( 'authenticate', [ __CLASS__, 'enforce_totp_login' ]",
+          "add_action( 'login_form', [ __CLASS__, 'render_totp_login_field' ]",
+          "$counter > $state['last_counter']",
+          'recovery_hash(',
+          'hash_equals(',
+          'ip_matches(',
+          'inet_pton('
+        ) &&
+        hasNone('JBSWY3DPEHPK3P', '84.2.44.19', 'handle_auth_time_sync', 'preserve_auth_credentials_on_update', "'totp_secret_key'"),
     },
     {
-      id: 'wp-hide-master-password-gate',
+      id: 'wp-hide-access-gates',
       category: 'Biztonság',
-      title: 'WP Rejtés (v0.7.0): URL álcázás, AJAX Buborék Login, Forráskód-védelem & Titkosított Mesterjelszó',
+      title: 'WP Rejtés: hash-elt mesterjelszó kapu, REST-zárolás, felderítés-tiltás, működő belépő buborék',
       description:
-        'WP URL és meta elrejtés, egyéni login URL és [wtk_custom_login], AJAX buborék belépés, Csak bejelentkezettek mód forráskód-törléssel (enforce_wp_hide_access_gate), felhasználónév/e-mail maszkolás, valamint titkosított Mesterjelszó admin betekintéssel és IP fehérlistával.',
+        'A mesterjelszó csak wp_hash_password hash-ként tárolt, a kapu aláírt HttpOnly sütit ad és sebességkorlátos, az admin sosem zárható ki; a csak-tagoknak mód a REST API-t is zárolja; verzió-elrejtés és felhasználó-felderítés tiltás; az AJAX buborék belépés valódi űrlapot és a captcha/2FA-n átmenő wp_signon-t használ. Nincs beégetett jelszó és nincs visszafejthető titkosítás.',
       passed:
         has(
-          'enforce_wp_hide_access_gate(',
-          'filter_masked_author_name(',
-          'filter_masked_comment_author(',
-          'render_custom_login_shortcode(',
-          'render_ajax_bubble_login_widget(',
-          'handle_ajax_bubble_login(',
-          'decrypt_master_password_for_admin(',
-          "'master_password_cipher'",
-          "'master_whitelisted_ips'"
-        ),
+          'wp_hash_password(',
+          'wp_check_password(',
+          'gate_token(',
+          "'httponly' => true",
+          "add_filter( 'rest_authentication_errors'",
+          'strip_version_query',
+          'filter_rest_endpoints',
+          'wp_signon(',
+          'login_form_html(',
+          "current_user_can( 'manage_options' )"
+        ) &&
+        hasNone('decrypt_master_password_for_admin', 'atk_enc_v1', 'ATKENC1', 'AndToolKit#2026', 'AND_TOOLKIT_MASTER_KEY', "'master_password_cipher'"),
+    },
+    {
+      id: 'config-key-consistency',
+      category: 'PHP 8.0+',
+      title: 'Konfigurációs kulcsok egységesek (alapérték ↔ beállítás-séma ↔ kód)',
+      description:
+        'Minden, az admin űrlapon szereplő és a kódban olvasott beállítási kulcs szerepel az alapértékek között, különben a mentett érték elveszne (merge_config eldobja) vagy undefined index hiba keletkezne.',
+      passed: (() => {
+        const m = findConfigKeyMismatches(phpCode);
+        return m.schemaMissing.length === 0 && m.codeMissing.length === 0 && m.defaultsFound > 0;
+      })(),
     },
     {
       id: 'rest-search-safe',

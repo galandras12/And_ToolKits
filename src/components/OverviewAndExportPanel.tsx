@@ -107,10 +107,10 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             <AndWrenchLogo size="lg" />
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                And ToolKit v0.7.0 — WordPress 7.1 &amp; PHP 8.0+ Forráskód (and-toolkit.php)
+                And ToolKit v0.7.1 — WordPress 7.1 &amp; PHP 8.0+ Forráskód (and-toolkit.php)
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong> · Verzió: <span className="font-mono">0.7.0</span> · Célkörnyezet: <span className="font-mono">WordPress 7.1 / PHP 8.0+ / GDPR / Optimalizáló / Audit / CAPTCHA / Hitelesítés &amp; WP Rejtés</span>
+                Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong> · Verzió: <span className="font-mono">0.7.1</span> · Célkörnyezet: <span className="font-mono">WordPress 7.1 / PHP 8.0+ / GDPR / Optimalizáló / Audit / CAPTCHA / Hitelesítés &amp; WP Rejtés</span>
               </p>
             </div>
           </div>
@@ -150,7 +150,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                WordPress 7.1, PHP 8.0, EU GDPR, Optimalizáló, Audit, Botvédelem, Hitelesítés &amp; WP Rejtés Jelentés (v0.7.0)
+                WordPress 7.1, PHP 8.0, EU GDPR, Optimalizáló, Audit, Botvédelem, Hitelesítés &amp; WP Rejtés Jelentés (v0.7.1)
               </h3>
             </div>
             <span className="text-xs font-mono font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
@@ -329,7 +329,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                 </tr>
                 <tr>
                   <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-slate-100">
-                    10. Hitelesítés: 2FA TOTP, Időszinkron, Passkey, E-mail &amp; Offline Kódok (v0.7.0)
+                    10. Hitelesítés: 2FA TOTP, Időszinkron, Passkey, E-mail &amp; Offline Kódok (v0.7.1)
                   </td>
                   <td className="py-2.5 px-3 font-mono text-blue-600 dark:text-blue-400">
                     [wtk_auth_manager]
@@ -343,7 +343,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                 </tr>
                 <tr>
                   <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-slate-100">
-                    11. WP Rejtés, AJAX Buborék Belépés &amp; Mesterjelszó Kapu (v0.7.0)
+                    11. WP Rejtés, AJAX Buborék Belépés &amp; Mesterjelszó Kapu (v0.7.1)
                   </td>
                   <td className="py-2.5 px-3 font-mono text-blue-600 dark:text-blue-400">
                     [wtk_custom_login]
@@ -370,14 +370,14 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                GitHub Közzététel Előkészítve (v0.7.0 Release)
+                GitHub Közzététel Előkészítve (v0.7.1 Release)
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                A gyökérkönyvtárban az önálló <code className="font-mono">/and-toolkit.php</code> és a látványos <code className="font-mono">/README.md</code> frissítve a <code className="font-mono">0.7.0</code> Hitelesítés (2FA, Időszinkron, Passkey, Offline kódok) és WP Rejtés &amp; Mesterjelszó modulokkal.
+                A gyökérkönyvtárban az önálló <code className="font-mono">/and-toolkit.php</code> és a látványos <code className="font-mono">/README.md</code> frissítve a <code className="font-mono">0.7.1</code> Hitelesítés (2FA, Időszinkron, Passkey, Offline kódok) és WP Rejtés &amp; Mesterjelszó modulokkal.
               </p>
             </div>
             <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-              Git: main · tag: v0.7.0
+              Git: main · tag: v0.7.1
             </span>
           </div>
           <div className="p-3 rounded-md bg-slate-950 text-slate-200 text-xs font-mono overflow-x-auto space-y-1">
@@ -393,7 +393,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
   // OVERVIEW MODE
   return (
     <div className="space-y-6">
-      {/* Overview Header with Custom Wrench-& Logo, Version 0.7.0 & Author galandras12+AI */}
+      {/* Overview Header with Custom Wrench-& Logo, Version 0.7.1 & Author galandras12+AI */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-start sm:items-center gap-3.5">
           <AndWrenchLogo size="lg" />
@@ -403,7 +403,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             </h2>
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-                Verzió: 0.7.0
+                Verzió: 0.7.1
               </span>
               <span aria-hidden="true">·</span>
               <span>
@@ -807,7 +807,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           </div>
         </div>
 
-        {/* Module 10: Hitelesítés (2FA, Time Drift Sync, Passkey, Email, Offline Vault) (New in v0.7.0) */}
+        {/* Module 10: Hitelesítés (2FA, Time Drift Sync, Passkey, Email, Offline Vault) (New in v0.7.1) */}
         <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -817,7 +817,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    10. Hitelesítés: 2FA, Időszinkron, Passkey &amp; Offline Széf (v0.7.0)
+                    10. Hitelesítés: 2FA, Időszinkron, Passkey &amp; Offline Széf (v0.7.1)
                   </h3>
                   <div className="text-xs text-slate-500 font-mono">
                     TOTP + {(state.auth.passkeyCredentials ?? []).length} Passkey + {(state.auth.offlineSavedItems ?? []).length} Offline kód · Offset: {state.auth.timeOffsetSeconds} mp
@@ -849,7 +849,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           </div>
         </div>
 
-        {/* Module 11: WP Rejtés, Bubble Login, Members-Only Zero Source Leak & Master Password (New in v0.7.0) */}
+        {/* Module 11: WP Rejtés, Bubble Login, Members-Only Zero Source Leak & Master Password (New in v0.7.1) */}
         <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4 md:col-span-2">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -859,7 +859,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    11. WP Rejtés, AJAX Buborék Belépés, Zárolt Mód &amp; Mesterjelszó (v0.7.0)
+                    11. WP Rejtés, AJAX Buborék Belépés, Zárolt Mód &amp; Mesterjelszó (v0.7.1)
                   </h3>
                   <div className="text-xs text-slate-500 font-mono">
                     Belépő: {state.wpHide.customLoginSlug} · Tartalom: {state.wpHide.customContentSlug} · Mesterjelszó: {state.wpHide.masterPasswordEnabled ? 'AKTÍV' : 'KÉSZENLÉTBEN'}
@@ -993,7 +993,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              WordPress 7.1, PHP 8.0+, EU GDPR, Optimalizáló, Audit, Botvédelem, Hitelesítés &amp; WP Rejtés Audit (v0.7.0)
+              WordPress 7.1, PHP 8.0+, EU GDPR, Optimalizáló, Audit, Botvédelem, Hitelesítés &amp; WP Rejtés Audit (v0.7.1)
             </h3>
           </div>
           <div className="flex items-center gap-3 text-xs">

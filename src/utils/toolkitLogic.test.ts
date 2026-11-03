@@ -1,10 +1,13 @@
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { PLUGIN_VERSION } from './pluginTemplate.ts';
 import assert from 'node:assert/strict';
 import {
   INITIAL_AUDIT_ENTRIES,
   INITIAL_POSTS,
   INITIAL_STATE,
+  RELEASE_STATE,
+  findConfigKeyMismatches,
   auditWordPressPhpCompatibility,
   buildUpdateNotificationEmailPreview,
   calculateMediaQueueSummary,
@@ -104,7 +107,7 @@ test('filterAuditLogEntries and formatAuditLogsForExport support .log, .txt, and
   const csvOut = formatAuditLogsForExport(INITIAL_AUDIT_ENTRIES, 'csv');
 
   assert.equal(logOut.includes('actor="galandras12"'), true);
-  assert.equal(txtOut.includes('AND TOOLKIT v0.7.0'), true);
+  assert.equal(txtOut.includes('AND TOOLKIT v0.7.1'), true);
   assert.equal(csvOut.startsWith('ID,Idopont,Kategoria'), true);
 });
 
@@ -345,10 +348,11 @@ test('v0.7.0 WP Rejtés & Mesterjelszó: titkosítás, admin felfedés, IP fehé
   assert.equal(memberResult.outputHtml.includes('WordPress 7.1'), false);
 });
 
-test('generateWordPressPluginPhp és auditWordPressPhpCompatibility: v0.7.0 teljes körű ellenőrzés', () => {
-  const php = generateWordPressPluginPhp(INITIAL_STATE);
+test('generateWordPressPluginPhp és auditWordPressPhpCompatibility: v0.7.1 teljes körű ellenőrzés', () => {
+  const php = generateWordPressPluginPhp(RELEASE_STATE);
   assert.equal(php.includes('Plugin Name:       And ToolKit'), true);
-  assert.equal(php.includes('Version:           0.7.0'), true);
+  assert.equal(php.includes(`Version:           ${PLUGIN_VERSION}`), true);
+  assert.equal(PLUGIN_VERSION, '0.7.1');
   assert.equal(php.includes('Requires at least: 6.3'), true);
   assert.equal(php.includes('Requires PHP:      8.0'), true);
   assert.equal(php.includes('declare(strict_types=1);'), true);
@@ -361,18 +365,18 @@ test('generateWordPressPluginPhp és auditWordPressPhpCompatibility: v0.7.0 telj
   assert.equal(php.includes('/*{{DEFAULTS}}*/'), false);
   assert.equal(php.includes('@gmail.com'), false);
 
-  const audit = auditWordPressPhpCompatibility(php, INITIAL_STATE);
+  const audit = auditWordPressPhpCompatibility(php, RELEASE_STATE);
   assert.deepEqual(
     audit.checks.filter((c) => !c.passed).map((c) => c.id),
     []
   );
   assert.equal(audit.allPassed, true);
   assert.equal(audit.passedCount, audit.totalCount);
-  assert.equal(audit.totalCount, 15);
+  assert.equal(audit.totalCount, 16);
 });
 
 test('az audit nem engedi át a régi, üres vázat (regressziós védelem)', () => {
-  const stub = "<?php declare(strict_types=1); if ( ! defined( 'ABSPATH' ) ) { exit; } final class And_ToolKit_Plugin { public const VERSION = '0.7.0'; }";
+  const stub = "<?php declare(strict_types=1); if ( ! defined( 'ABSPATH' ) ) { exit; } final class And_ToolKit_Plugin { public const VERSION = '0.7.1'; }";
   const audit = auditWordPressPhpCompatibility(stub, INITIAL_STATE);
   assert.equal(audit.allPassed, false);
   assert.equal(audit.passedCount < 3, true);
@@ -389,11 +393,44 @@ test('a generátor PHP-escape-eli a szövegeket (aposztróf és visszaper nem t�
 
 test('a gyökér and-toolkit.php megegyezik a generátor kimenetével (nincs elcsúszás)', () => {
   const onDisk = readFileSync(new URL('../../and-toolkit.php', import.meta.url), 'utf8');
-  assert.equal(onDisk, generateWordPressPluginPhp(INITIAL_STATE));
+  assert.equal(onDisk, generateWordPressPluginPhp(RELEASE_STATE));
 });
 
 test('a Studio CSV exportja védett a képlet-injekció ellen', () => {
   const entries = [{ ...INITIAL_AUDIT_ENTRIES[0], details: '=HYPERLINK("http://evil")' }];
   const csv = formatAuditLogsForExport(entries, 'csv');
   assert.equal(csv.includes('"\'=HYPERLINK'), true);
+});
+
+test('a kiadott PHP nem tartalmaz demó-titkot, beégetett jelszót, kulcsot vagy személyes adatot', () => {
+  const php = generateWordPressPluginPhp(RELEASE_STATE);
+  for (const secret of [
+    'JBSWY3DPEHPK3P', 'AndToolKit#2026', 'atk_enc_v1', 'ATKENC1', 'AND_TOOLKIT_MASTER_KEY', 'atk_sha256:',
+    '84.2.44.19', '192.168.1.0/24', '6Lc_AndToolKit', '0x4AAAAAA_AndToolKit', 'gmail.com',
+  ]) {
+    assert.equal(php.includes(secret), false, `a kiadott fájlban nem lehet: ${secret}`);
+  }
+  // telepítéskor semmi felhasználó felé látható promóció / rejtés / kapu nem aktív
+  assert.match(php, /'master_password_enabled'\s*=> false/);
+  assert.match(php, /'master_password_hash'\s*=> ''/);
+  assert.match(php, /'members_only_mode'\s*=> false/);
+  assert.match(php, /'page_cache_enabled'\s*=> false/);
+});
+
+test('konfigurációs kulcsok: az alapértékek, a séma és a kód egyezik (0.7.0-s hibaosztály regresszió)', () => {
+  const m = findConfigKeyMismatches(generateWordPressPluginPhp(RELEASE_STATE));
+  assert.deepEqual(m.schemaMissing, []);
+  assert.deepEqual(m.codeMissing, []);
+  assert.equal(m.defaultsFound >= 10, true);
+  // a hibás 0.7.0-ás kulcsnevekkel a vizsgáló valóban jelez
+  const broken = generateWordPressPluginPhp(RELEASE_STATE).replace("'hide_usernames_emails'", "'hide_usernames_x'");
+  assert.equal(findConfigKeyMismatches(broken).schemaMissing.length > 0 || findConfigKeyMismatches(broken).codeMissing.length > 0, true);
+});
+
+test('a Studio-állapot titkai (jelszó-hash, TOTP kulcs) nem kerülnek az exportált PHP-ba, ha a felhasználó exportál', () => {
+  const state = structuredClone(INITIAL_STATE);
+  const php = generateWordPressPluginPhp(state);
+  assert.equal(php.includes(state.auth.totpSecretKey), false);
+  assert.equal(php.includes(state.wpHide.masterPasswordHash), false);
+  assert.equal(php.includes(state.wpHide.masterPasswordCipher), false);
 });

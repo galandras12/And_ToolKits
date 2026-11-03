@@ -316,6 +316,11 @@ export const AuthModulePanel: React.FC<AuthModulePanelProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* v0.7.1: tájékoztató a PHP bővítmény tényleges képességeiről */}
+      <div role="note" className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs leading-relaxed text-amber-200">
+        <strong>Előnézet és tényleges PHP-támogatás:</strong> a letöltött PHP bővítményben jelenleg a <strong>TOTP alapú 2FA</strong> (RFC 6238, felhasználónkénti titkosított kulccsal), az egyszer használatos <strong>visszaállító kódok</strong>, a szerepkör-szabályok (kötelező / opcionális / tiltott) és a CIDR-es IP-mentesség működik; a titkos kulcsot a felhasználók a saját profiljukon állítják be, és soha nem kerül a konfigba. A <strong>Passkey, az e-mail OTP, az offline jelszó-széf és az időszinkron</strong> itt csak előnézet: a PHP kód még nem tartalmazza őket.
+      </div>
+
       {/* Header Card */}
       <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-100">
         <div className="flex flex-wrap items-start justify-between gap-4">

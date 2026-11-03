@@ -637,7 +637,7 @@ export default function App() {
       auth: preserveAuthDataAcrossPluginUpdate(prev.auth, INITIAL_STATE.auth),
     }));
     triggerSaveFeedback(
-      'Alapértelmezett And ToolKit v0.7.0 beállítások visszaállítva (2FA, Passkey és Offline kódok megőrizve!)'
+      'Alapértelmezett And ToolKit v0.7.1 beállítások visszaállítva (2FA, Passkey és Offline kódok megőrizve!)'
     );
   };
 
@@ -874,7 +874,7 @@ export default function App() {
               And ToolKit
             </span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono tabular-nums">Verzió: 0.7.0</span>
+            <span className="font-mono tabular-nums">Verzió: 0.7.1</span>
             <span aria-hidden="true">·</span>
             <span>
               Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong>
@@ -1127,7 +1127,7 @@ export default function App() {
       <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4">
         <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
           <span>
-            And ToolKit v0.7.0 · Készítő: galandras12+AI · Auditálva: WordPress 7.1, PHP 8.0+ &amp; EU GDPR
+            And ToolKit v0.7.1 · Készítő: galandras12+AI · Auditálva: WordPress 7.1, PHP 8.0+ &amp; EU GDPR
           </span>
           <div className="flex items-center gap-4">
             <button

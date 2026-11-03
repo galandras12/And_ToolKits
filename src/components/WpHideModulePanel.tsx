@@ -138,6 +138,11 @@ export const WpHideModulePanel: React.FC<WpHideModulePanelProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* v0.7.1: tájékoztató a PHP bővítmény tényleges képességeiről */}
+      <div role="note" className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs leading-relaxed text-amber-200">
+        <strong>Előnézet és tényleges PHP-támogatás:</strong> a letöltött PHP bővítményben jelenleg a <strong>verzió-/generator elrejtés</strong>, a <strong>felhasználó-felderítés tiltása</strong>, a <strong>szerző- és kommentnév-maszkolás</strong>, a <strong>csak tagoknak mód</strong> (REST zárolással), a <strong>mesterjelszó kapu</strong>, a <strong>[wtk_custom_login]</strong> űrlap és az <strong>AJAX belépő buborék</strong> működik. A mesterjelszót a bővítmény kizárólag sózott hash-ként tárolja (az admin sem tekintheti meg). Az <strong>URL-átírás (wp-content/wp-includes/wp-json álcázása) és a wp-login.php áthelyezése</strong> itt csak előnézet: a PHP kód még nem tartalmazza.
+      </div>
+
       {/* Header Card */}
       <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 text-slate-100">
         <div className="flex flex-wrap items-start justify-between gap-4">

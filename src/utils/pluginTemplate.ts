@@ -1,17 +1,18 @@
 /**
- * And ToolKit PHP plugin sablon (v0.7.0).
+ * And ToolKit PHP plugin sablon.
  * A `/*{{DEFAULTS}}*\/` helyére kerülnek a Studio beállításai (alapértelmezett konfiguráció).
- * A gyökér and-toolkit.php ebből a sablonból és az INITIAL_STATE-ből generált – ne szerkeszd kézzel,
+ * A gyökér and-toolkit.php ebből a sablonból és az RELEASE_STATE-ből generált – ne szerkeszd kézzel,
  * hanem módosítsd ezt a fájlt, majd futtasd: npm run build:plugin
  */
 export const PLUGIN_DEFAULTS_MARKER = '/*{{DEFAULTS}}*/';
+export const PLUGIN_VERSION = '0.7.1';
 
 export const PLUGIN_TEMPLATE = `<?php
 /**
  * Plugin Name:       And ToolKit
  * Plugin URI:        https://github.com/galandras12/And_ToolKits
- * Description:       WordPress adminisztrációs eszköztár: Esemény naptár, AJAX élő kereső, közösségi megosztó, látogatói/letöltési statisztika, GDPR süti-kezelő (Consent Mode v2), információs banner, kép/upload/lazy-load/cache optimalizáló, biztonsági audit napló e-mail értesítővel (Critical Only szűrővel), Google reCAPTCHA v3 & Cloudflare Turnstile botvédelem, Hitelesítés (2FA TOTP, időeltolódás-szinkron, Passkey, E-mail OTP, Offline jelszókezelő, szerepkör-szabályok, [wtk_auth_manager]), valamint WP Rejtés és Mesterjelszó Védelem.
- * Version:           0.7.0
+ * Description:       WordPress adminisztrációs eszköztár: Esemény naptár, AJAX élő kereső, közösségi megosztó, látogatói/letöltési statisztika, GDPR süti-kezelő (Consent Mode v2), információs banner, kép/upload/lazy-load/cache optimalizáló, biztonsági audit napló e-mail értesítővel (Critical Only szűrővel), Google reCAPTCHA v3 & Cloudflare Turnstile botvédelem, kétfaktoros hitelesítés (TOTP + visszaállító kódok), valamint WP Rejtés (verzió-elrejtés, felderítés-tiltás, maszkolás, csak tagoknak mód, mesterjelszó kapu, AJAX belépő buborék).
+ * Version:           0.7.1
  * Requires at least: 6.3
  * Tested up to:      7.1
  * Requires PHP:      8.0
@@ -29,7 +30,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class And_ToolKit_Plugin {
-    public const VERSION     = '0.7.0';
+    public const VERSION     = '0.7.1';
     public const AUTHOR      = 'galandras12+AI';
     public const WP_TARGET   = '7.1';
     public const PHP_TARGET  = '8.0';
@@ -64,6 +65,9 @@ final class And_ToolKit_Plugin {
         add_action( 'rest_api_init', [ __CLASS__, 'register_rest_routes' ] );
         add_action( self::CRON_HOOK, [ __CLASS__, 'run_hourly_tasks' ] );
         add_action( 'template_redirect', [ __CLASS__, 'start_page_cache' ], 0 );
+        foreach ( [ 'wp_update_nav_menu', 'customize_save_after', 'comment_post', 'wp_set_comment_status', 'update_option_sidebars_widgets', 'created_term', 'edited_term', 'delete_term' ] as $invalidating_hook ) {
+            add_action( $invalidating_hook, [ __CLASS__, 'flush_page_cache' ] );
+        }
 
         // Kép-, Upload Limit-, Lazy Load és Gyorsítótár Optimalizáló
         add_filter( 'upload_size_limit', [ __CLASS__, 'filter_upload_size_limit' ], 999 );
@@ -89,7 +93,7 @@ final class And_ToolKit_Plugin {
         add_action( 'activated_plugin', [ __CLASS__, 'refresh_integrity_baseline' ] );
         add_action( 'deactivated_plugin', [ __CLASS__, 'refresh_integrity_baseline' ] );
 
-        // Botvédelem: Google reCAPTCHA v3 & Cloudflare Turnstile (v0.6.0)
+        // Botvédelem: Google reCAPTCHA v3 & Cloudflare Turnstile
         add_action( 'login_enqueue_scripts', [ __CLASS__, 'enqueue_captcha_login_assets' ] );
         add_action( 'login_form', [ __CLASS__, 'render_captcha_field' ] );
         add_action( 'register_form', [ __CLASS__, 'render_captcha_field' ] );
@@ -100,16 +104,24 @@ final class And_ToolKit_Plugin {
         add_action( 'lostpassword_post', [ __CLASS__, 'verify_lostpassword_captcha' ], 10, 1 );
         add_filter( 'preprocess_comment', [ __CLASS__, 'verify_comment_captcha' ], 10, 1 );
 
-        // 10. Hitelesítés: Frissítés-biztos 2FA / Passkey / Offline kódok megőrzése (v0.7.0)
-        add_action( 'upgrader_process_complete', [ __CLASS__, 'preserve_auth_credentials_on_update' ], 5, 2 );
+        // Hitelesítés: 2FA (TOTP + visszaállító kódok)
+        add_action( 'login_form', [ __CLASS__, 'render_totp_login_field' ] );
+        add_filter( 'authenticate', [ __CLASS__, 'enforce_totp_login' ], 50, 3 );
+        add_action( 'application_password_did_authenticate', [ __CLASS__, 'mark_app_password_used' ] );
+        add_action( 'show_user_profile', [ __CLASS__, 'render_profile_2fa' ] );
+        add_action( 'edit_user_profile', [ __CLASS__, 'render_profile_2fa' ] );
+        add_action( 'personal_options_update', [ __CLASS__, 'save_profile_2fa' ] );
+        add_action( 'edit_user_profile_update', [ __CLASS__, 'save_profile_2fa' ] );
+        add_action( 'admin_notices', [ __CLASS__, 'render_2fa_required_notice' ] );
 
-        // 11. WP Rejtés & Hozzáférési kapu (v0.7.0)
-        add_action( 'template_redirect', [ __CLASS__, 'enforce_wp_hide_access_gate' ], 1 );
+        // WP Rejtés & hozzáférési kapuk
+        add_action( 'template_redirect', [ __CLASS__, 'enforce_wp_hide_access_gate' ], -1 );
+        add_filter( 'rest_authentication_errors', [ __CLASS__, 'filter_rest_access' ], 90 );
         add_action( 'wp_footer', [ __CLASS__, 'render_ajax_bubble_login_widget' ], 25 );
         add_action( 'wp_ajax_nopriv_wtk_bubble_login', [ __CLASS__, 'handle_ajax_bubble_login' ] );
         add_action( 'wp_ajax_wtk_bubble_login', [ __CLASS__, 'handle_ajax_bubble_login' ] );
         add_filter( 'the_author', [ __CLASS__, 'filter_masked_author_name' ], 20 );
-        add_filter( 'get_the_author_display_name', [ __CLASS__, 'filter_masked_author_name' ], 20 );
+        add_filter( 'get_the_author_display_name', [ __CLASS__, 'filter_masked_author_name' ], 20, 2 );
         add_filter( 'get_comment_author', [ __CLASS__, 'filter_masked_comment_author' ], 20, 3 );
 
         // Rövidkódok: Szövegvezérlő widgetek (Szöveg widget, Rövidkód blokk, klasszikus témák)
@@ -135,6 +147,7 @@ final class And_ToolKit_Plugin {
         if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
             wp_schedule_event( time() + 300, 'hourly', self::CRON_HOOK );
         }
+        self::apply_wp_hide();
     }
 
     public static function activate(): void {
@@ -155,10 +168,12 @@ final class And_ToolKit_Plugin {
         wp_clear_scheduled_hook( self::CRON_HOOK );
         $wpdb->query( 'DROP TABLE IF EXISTS ' . $wpdb->prefix . 'and_toolkit_audit' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
         $wpdb->query( 'DROP TABLE IF EXISTS ' . $wpdb->prefix . 'and_toolkit_consent' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-        foreach ( [ self::OPTION_KEY, 'and_toolkit_db_version', 'and_toolkit_integrity', 'and_toolkit_notified_updates', 'and_toolkit_digest_last', 'and_toolkit_downloads_total', 'and_toolkit_visits_total', 'and_toolkit_visits_daily', 'and_toolkit_cache_gen', 'and_toolkit_optimize_last', 'and_toolkit_captcha_verified', 'and_toolkit_captcha_blocked' ] as $option ) {
+        foreach ( [ self::OPTION_KEY, 'and_toolkit_db_version', 'and_toolkit_integrity', 'and_toolkit_notified_updates', 'and_toolkit_digest_last', 'and_toolkit_downloads_total', 'and_toolkit_visits_total', 'and_toolkit_visits_daily', 'and_toolkit_cache_gen', 'and_toolkit_optimize_last', 'and_toolkit_captcha_verified', 'and_toolkit_captcha_blocked', 'and_toolkit_auth_vault_backup' ] as $option ) {
             delete_option( $option );
         }
-        delete_metadata( 'user', 0, 'and_toolkit_devices', '', true );
+        foreach ( [ 'and_toolkit_devices', 'and_toolkit_totp', 'and_toolkit_totp_pending', 'and_toolkit_recovery_flash' ] as $meta_key ) {
+            delete_metadata( 'user', 0, $meta_key, '', true );
+        }
         delete_post_meta_by_key( '_wtk_event_date' );
     }
 
@@ -332,57 +347,43 @@ final class And_ToolKit_Plugin {
                 'retention_days'                 => [ 'int', 'Naplómegőrzés (nap)', [ 7, 730 ] ],
             ],
             'captcha'     => [
-                'enabled'                 => [ 'bool', 'Botvédelem (CAPTCHA) engedélyezése' ],
+                'enabled'                 => [ 'bool', 'Botvédelem (CAPTCHA) engedélyezése (kulcsok nélkül nem aktív)' ],
                 'provider'                => [ 'select', 'Szolgáltató (Google reCAPTCHA v3 / Cloudflare Turnstile)', $o['captcha_provider'] ],
                 'recaptcha_site_key'      => [ 'text', 'Google reCAPTCHA v3 Site Key (Nyilvános kulcs)' ],
-                'recaptcha_secret_key'    => [ 'secret', 'Google reCAPTCHA v3 Secret Key (Titkos kulcs)' ],
+                'recaptcha_secret_key'    => [ 'secret', 'Google reCAPTCHA v3 Secret Key (Titkos kulcs; üresen hagyva a mentett marad)' ],
                 'turnstile_site_key'      => [ 'text', 'Cloudflare Turnstile Site Key (Nyilvános kulcs)' ],
-                'turnstile_secret_key'    => [ 'secret', 'Cloudflare Turnstile Secret Key (Titkos kulcs)' ],
+                'turnstile_secret_key'    => [ 'secret', 'Cloudflare Turnstile Secret Key (Titkos kulcs; üresen hagyva a mentett marad)' ],
                 'score_threshold'         => [ 'float', 'Észlelési érzékenység / küszöbérték (0.1 – 0.9)', [ 0.1, 0.9 ] ],
                 'turnstile_mode'          => [ 'select', 'Turnstile widget mód', $o['turnstile_mode'] ],
                 'turnstile_theme'         => [ 'select', 'Turnstile színséma', $o['turnstile_theme'] ],
-                'protect_login'           => [ 'bool', 'Bejelentkezési űrlap védelme (wp-login.php)' ],
+                'protect_login'           => [ 'bool', 'Bejelentkezési űrlap védelme (wp-login.php; az XML-RPC / REST / alkalmazásjelszavas belépést nem érinti)' ],
                 'protect_register'        => [ 'bool', 'Regisztrációs űrlap védelme' ],
                 'protect_lost_password'   => [ 'bool', 'Elfelejtett jelszó űrlap védelme' ],
-                'protect_comments'        => [ 'bool', 'Hozzászólási (komment) űrlap védelme' ],
-                'protect_rest_endpoints'  => [ 'bool', 'Nyilvános REST végpontok védelme' ],
+                'protect_comments'        => [ 'bool', 'Hozzászólási (komment) űrlap védelme (kijelentkezett látogatóknak)' ],
                 'bypass_logged_in_admins' => [ 'bool', 'Bejelentkezett adminisztrátorok kihagyása' ],
                 'log_blocked_attempts'    => [ 'bool', 'Blokkolt bot-kísérletek rögzítése az Audit Naplóban' ],
             ],
             'auth'        => [
-                'enabled'                        => [ 'bool', 'Hitelesítés (2FA / Passkey / E-mail / Offline) engedélyezése' ],
-                'totp_enabled'                   => [ 'bool', '2FA Szabvány Hitelesítő (TOTP RFC 6238)' ],
-                'totp_issuer'                    => [ 'text', 'TOTP Kibocsátó neve' ],
-                'time_drift_tolerance_windows'   => [ 'int', 'Időeltolódás tűréshatár (±30 mp ablak)', [ 0, 5 ] ],
-                'manual_time_offset_sec'         => [ 'int', 'Manuális szerver–kliens időeltolódás korrekció (mp)', [ -86400, 86400 ] ],
-                'passkey_enabled'                => [ 'bool', 'Passkey (WebAuthn / FIDO2) hitelesítés' ],
-                'passkey_rp_id'                  => [ 'text', 'Passkey Relying Party domain' ],
-                'email_auth_enabled'             => [ 'bool', 'E-mail alapú egyszeri kódos (OTP) hitelesítő' ],
-                'email_code_expiry_mins'         => [ 'int', 'E-mail OTP érvényességi idő (perc)', [ 1, 60 ] ],
-                'offline_passwords_enabled'      => [ 'bool', 'Offline mentett jelszó és vészkód kezelő' ],
-                'preserve_credentials_on_update' => [ 'bool', 'Beállított 2FA, Passkey és Offline kódok védelme plugin frissítéskor' ],
-                'shortcode_page_slug'            => [ 'text', 'Frontend önkiszolgáló oldal slug ([wtk_auth_manager])' ],
+                'enabled'                      => [ 'bool', 'Kétfaktoros hitelesítés (2FA) engedélyezése' ],
+                'totp_enabled'                 => [ 'bool', '2FA hitelesítő alkalmazással (TOTP, RFC 6238) és visszaállító kódokkal; a felhasználók a saját profiljukon kapcsolják be' ],
+                'totp_issuer'                  => [ 'text', 'TOTP kibocsátó neve (a hitelesítő alkalmazásban látszik)' ],
+                'time_drift_tolerance_windows' => [ 'int', 'Időeltolódás tűréshatár (±30 mp ablak)', [ 0, 5 ] ],
+                'whitelisted_ips'              => [ 'iplist', '2FA alól mentesített IP-címek / CIDR-ek (soronként egy; csak megbízható, fix címek – proxy mögött pontatlan)' ],
             ],
             'wp_hide'     => [
-                'enabled'                       => [ 'bool', 'WP Rejtés és hozzáférés-védelem engedélyezése' ],
-                'hide_wp_urls'                  => [ 'bool', 'WordPress URL-ek (wp-content, wp-includes, wp-json) álcázása' ],
-                'custom_content_slug'           => [ 'text', 'Álcázott média/statikus útvonal (pl. /assets-media)' ],
-                'custom_includes_slug'          => [ 'text', 'Álcázott rendszerkönyvtár útvonal (pl. /core-lib)' ],
-                'hide_wp_version_meta'          => [ 'bool', 'WP verziószám, generator meta és readme.html elrejtése' ],
-                'disable_author_archives'       => [ 'bool', '?author=N felhasználó-felderítés tiltása' ],
-                'hide_wp_login_and_admin'       => [ 'bool', 'wp-login.php és wp-admin elrejtése illetéktelenek elől' ],
-                'custom_login_slug'             => [ 'text', 'Egyedi bejelentkező URL slug (pl. /kapu-belepes)' ],
-                'login_shortcode_enabled'       => [ 'bool', '[wtk_custom_login] rövidkódos bejelentkező űrlap engedélyezése' ],
-                'ajax_bubble_login_enabled'     => [ 'bool', 'Lebegő AJAX buborék bejelentkező widget az oldalon' ],
-                'bubble_position'               => [ 'select', 'Buborék pozíciója', $o['bubble_pos'] ],
-                'bubble_label'                  => [ 'text', 'Buborék gomb felirata' ],
-                'members_only_mode'             => [ 'bool', 'Kizárólag bejelentkezett felhasználók számára hozzáférési mód' ],
-                'strip_html_source_for_guests'  => [ 'bool', 'Forráskód-szivárgás tiltása (tartalom törlése a szerveroldali HTML-ből vendégeknek)' ],
-                'members_only_overlay_headline' => [ 'text', 'Zárolt oldal főcíme' ],
-                'members_only_overlay_subtext'  => [ 'text', 'Zárolt oldal tájékoztató szövege' ],
-                'hide_usernames_and_emails'     => [ 'bool', 'Felhasználónevek és e-mail címek elrejtése bejegyzéseknél és kommenteknél' ],
-                'masked_author_fallback'        => [ 'text', 'Maszkolt szerző megjelenített neve' ],
-                'master_password_enabled'       => [ 'bool', 'Egységes Mesterjelszó kapu bekapcsolása a teljes weboldalra' ],
+                'enabled'                         => [ 'bool', 'WP Rejtés és hozzáférés-védelem engedélyezése' ],
+                'strip_wp_version'                => [ 'bool', 'WP verziószám és generator meta elrejtése' ],
+                'block_author_scanning'           => [ 'bool', 'Felhasználó-felderítés tiltása vendégeknek (?author=N, szerzői archívum, /wp/v2/users)' ],
+                'hide_usernames_emails'           => [ 'bool', 'Felhasználónevek és e-mail címek maszkolása a szerzői és komment nevekben' ],
+                'author_alias'                    => [ 'text', 'Maszkolt szerzőnév (az "ID" szó a felhasználó azonosítójára cserélődik)' ],
+                'members_only_mode'               => [ 'bool', 'Csak bejelentkezett látogatók (a REST API is zárolt vendégeknek)' ],
+                'master_password_enabled'         => [ 'bool', 'Mesterjelszó kapu az egész weboldalra (adminisztrátorok és mentesített IP-k kivételével)' ],
+                'master_password_new'             => [ 'newpass', 'Új mesterjelszó (üresen hagyva a jelenlegi marad; legalább 8 karakter)' ],
+                'master_password_whitelisted_ips' => [ 'iplist', 'Mesterjelszó alól mentesített IP-címek / CIDR-ek (soronként egy)' ],
+                'enable_login_shortcode'          => [ 'bool', '[wtk_custom_login] rövidkódos bejelentkező űrlap' ],
+                'enable_ajax_bubble_login'        => [ 'bool', 'Lebegő AJAX belépő buborék' ],
+                'bubble_position'                 => [ 'select', 'Buborék pozíciója', $o['bubble_pos'] ],
+                'bubble_button_label'             => [ 'text', 'Buborék gomb felirata' ],
             ],
             'performance' => [
                 'defer_scripts'  => [ 'bool', 'Szkriptek defer betöltése' ],
@@ -400,10 +401,14 @@ final class And_ToolKit_Plugin {
             foreach ( $fields as $key => $def ) {
                 $type = $def[0];
                 $raw  = $input[ $group ][ $key ] ?? null;
+                if ( 'newpass' === $type ) {
+                    continue; // külön kezeljük, a konfigban nincs ilyen kulcs
+                }
                 $out[ $group ][ $key ] = match ( $type ) {
                     'bool'   => ! empty( $raw ),
                     'text'   => is_scalar( $raw ) ? sanitize_text_field( (string) $raw ) : $current[ $group ][ $key ],
-                    'secret' => is_scalar( $raw ) ? ( '' !== trim( (string) $raw ) ? (string) preg_replace( '/[^A-Za-z0-9_\\-.:]/', '', trim( (string) $raw ) ) : '' ) : $current[ $group ][ $key ],
+                    'secret' => is_scalar( $raw ) && '' !== trim( (string) $raw ) ? (string) preg_replace( '/[^A-Za-z0-9_\\-.:]/', '', trim( (string) $raw ) ) : $current[ $group ][ $key ],
+                    'iplist' => is_scalar( $raw ) ? self::sanitize_ip_list( (string) $raw ) : $current[ $group ][ $key ],
                     'email'  => is_scalar( $raw ) && is_email( sanitize_email( (string) $raw ) ) ? sanitize_email( (string) $raw ) : '',
                     'url'    => is_scalar( $raw ) ? esc_url_raw( trim( (string) $raw ) ) : $current[ $group ][ $key ],
                     'int'    => is_scalar( $raw ) ? max( (int) $def[2][0], min( (int) $def[2][1], (int) $raw ) ) : $current[ $group ][ $key ],
@@ -417,17 +422,20 @@ final class And_ToolKit_Plugin {
             }
         }
         $out['gdpr']['default_categories'] = $current['gdpr']['default_categories'];
-        // Frissítés-biztos hitelesítő adatok megőrzése (2FA titkos kulcs, Passkey-k, Offline kódok, szerepkör mátrix, IP fehérlista)
-        foreach ( [ 'totp_secret', 'passkeys', 'offline_passwords', 'role_policies', 'whitelisted_ips', 'manual_server_time_iso', 'last_time_sync_at' ] as $preserved_key ) {
-            if ( isset( $current['auth'][ $preserved_key ] ) ) {
-                $out['auth'][ $preserved_key ] = $current['auth'][ $preserved_key ];
+        // Mesterjelszó: csak sózott hash kerül tárolásra (wp_hash_password), a nyers jelszó és semmilyen visszafejthető másolat nem.
+        $new_password = $input['wp_hide']['master_password_new'] ?? '';
+        if ( is_scalar( $new_password ) && '' !== trim( (string) $new_password ) ) {
+            if ( mb_strlen( trim( (string) $new_password ) ) < 8 ) {
+                add_settings_error( self::OPTION_KEY, 'atk_master_short', 'A mesterjelszó legalább 8 karakter legyen, a jelszó nem változott.', 'error' );
+            } else {
+                $out['wp_hide']['master_password_hash'] = wp_hash_password( trim( (string) $new_password ) );
             }
         }
-        foreach ( [ 'master_password_cipher', 'master_password_hash', 'master_password_whitelisted_ips' ] as $wp_hide_key ) {
-            if ( isset( $current['wp_hide'][ $wp_hide_key ] ) ) {
-                $out['wp_hide'][ $wp_hide_key ] = $current['wp_hide'][ $wp_hide_key ];
-            }
+        if ( ! empty( $out['wp_hide']['master_password_enabled'] ) && '' === (string) $out['wp_hide']['master_password_hash'] ) {
+            $out['wp_hide']['master_password_enabled'] = false; // jelszó nélkül nem kapcsolható be (nehogy mindenki kizáródjon)
+            add_settings_error( self::OPTION_KEY, 'atk_master_missing', 'Mesterjelszó megadása nélkül a kapu nem kapcsolható be.', 'error' );
         }
+        self::flush_page_cache();
         self::$config_cache                = null;
         return $out;
     }
@@ -527,8 +535,8 @@ final class And_ToolKit_Plugin {
         return trim( (string) preg_replace( '/[\\r\\n\\t]+/', ' ', $text ) );
     }
 
-    private static function rate_limit( string $bucket, int $seconds ): bool {
-        $key = 'atk_rl_' . $bucket . '_' . substr( hash_hmac( 'sha256', self::client_ip(), wp_salt() ), 0, 24 );
+    private static function rate_limit( string $bucket, int $seconds, string $extra = '' ): bool {
+        $key = 'atk_rl_' . $bucket . '_' . substr( hash_hmac( 'sha256', self::client_ip() . '|' . self::client_user_agent() . '|' . $extra, wp_salt() ), 0, 24 );
         if ( false !== get_transient( $key ) ) {
             return false;
         }
@@ -707,10 +715,19 @@ final class And_ToolKit_Plugin {
     }
 
     public static function log_content_save_event( $post_id, $post, $update = false, $post_before = null ): void {
-        if ( ! $post instanceof \\WP_Post || ! in_array( $post->post_type, [ 'post', 'page' ], true ) ) {
+        if ( ! $post instanceof \\WP_Post || wp_is_post_revision( $post ) || wp_is_post_autosave( $post ) || in_array( $post->post_status, [ 'auto-draft', 'inherit' ], true ) ) {
             return;
         }
-        if ( wp_is_post_revision( $post ) || wp_is_post_autosave( $post ) || in_array( $post->post_status, [ 'auto-draft', 'inherit' ], true ) ) {
+        if ( is_post_type_viewable( $post->post_type ) ) {
+            self::flush_page_cache(); // minden megtekinthető típus (CPT, termék stb.) módosítása érvényteleníti a gyorsítótárat
+        }
+        if ( ! in_array( $post->post_type, [ 'post', 'page' ], true ) ) {
+            return;
+        }
+        // A Gutenberg egy mentésnél több kérést küld (pl. meta box mentés): a változatlan tartalmat nem naplózzuk újra.
+        if ( $update && $post_before instanceof \\WP_Post && 'auto-draft' !== $post_before->post_status
+            && $post_before->post_title === $post->post_title && $post_before->post_content === $post->post_content
+            && $post_before->post_status === $post->post_status && $post_before->post_excerpt === $post->post_excerpt ) {
             return;
         }
         $created = ! $update || ! $post_before instanceof \\WP_Post || 'auto-draft' === $post_before->post_status;
@@ -722,12 +739,15 @@ final class And_ToolKit_Plugin {
             sprintf( '%s %s: %s (#%d)', $label, $verb, get_the_title( $post ), (int) $post_id ),
             (string) $post_id
         );
-        self::flush_page_cache();
     }
 
     public static function log_content_delete_event( $post_id, $post = null ): void {
         $post = $post instanceof \\WP_Post ? $post : get_post( (int) $post_id );
-        if ( ! $post instanceof \\WP_Post || ! in_array( $post->post_type, [ 'post', 'page' ], true ) ) {
+        if ( ! $post instanceof \\WP_Post || wp_is_post_revision( $post ) ) {
+            return;
+        }
+        self::flush_page_cache();
+        if ( ! in_array( $post->post_type, [ 'post', 'page' ], true ) ) {
             return;
         }
         $label = 'page' === $post->post_type ? 'Oldal' : 'Bejegyzés';
@@ -737,7 +757,6 @@ final class And_ToolKit_Plugin {
             sprintf( '%s véglegesen törölve: %s (#%d)', $label, get_the_title( $post ), (int) $post_id ),
             (string) $post_id
         );
-        self::flush_page_cache();
     }
 
     public static function log_user_registration_event( $user_id, $userdata = [] ): void {
@@ -979,12 +998,12 @@ final class And_ToolKit_Plugin {
         $clean  = static fn( $v ): string => self::one_line( (string) $v );
         if ( 'csv' === $format ) {
             $handle = fopen( 'php://temp', 'r+' );
-            fputcsv( $handle, [ 'id', 'ido_utc', 'kategoria', 'sulyossag', 'felhasznalo', 'szerepkor', 'ip', 'bongeszo', 'cel', 'uzenet' ] );
+            fputcsv( $handle, [ 'id', 'ido_utc', 'kategoria', 'sulyossag', 'felhasznalo', 'szerepkor', 'ip', 'bongeszo', 'cel', 'uzenet' ], ',', '"', '\\\\' );
             foreach ( $rows as $r ) {
                 $cells = [ $r['id'], $r['created_at'], $r['category'], $r['severity'], $r['actor_login'], $r['actor_role'], $r['ip'], $r['user_agent'], $r['target'], $r['message'] ];
                 // CSV-injekció (képlet) elleni védelem
                 $cells = array_map( static fn( $c ): string => ( 1 === preg_match( '/^[=+\\-@]/', (string) $c ) ) ? "'" . $c : (string) $c, $cells );
-                fputcsv( $handle, $cells );
+                fputcsv( $handle, $cells, ',', '"', '\\\\' );
             }
             rewind( $handle );
             $out = (string) stream_get_contents( $handle );
@@ -1231,7 +1250,13 @@ final class And_ToolKit_Plugin {
                 echo '<input type="number" step="0.05" class="small-text" id="' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '" min="' . esc_attr( (string) $def[2][0] ) . '" max="' . esc_attr( (string) $def[2][1] ) . '" />';
                 break;
             case 'secret':
-                echo '<input type="password" class="regular-text" autocomplete="off" id="' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '" />';
+                echo '<input type="password" class="regular-text" autocomplete="new-password" id="' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '" value="" placeholder="' . esc_attr( '' !== (string) $value ? '•••••••• (mentve)' : 'nincs megadva' ) . '" />';
+                break;
+            case 'newpass':
+                echo '<input type="password" class="regular-text" autocomplete="new-password" id="' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '" value="" placeholder="' . esc_attr( '' !== (string) self::get_config()['wp_hide']['master_password_hash'] ? '•••••••• (beállítva)' : 'nincs beállítva' ) . '" />';
+                break;
+            case 'iplist':
+                echo '<textarea class="large-text code" rows="3" id="' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '">' . esc_textarea( implode( "\\n", (array) $value ) ) . '</textarea>';
                 break;
             case 'url':
                 echo '<input type="url" class="regular-text" id="' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '" />';
@@ -1270,6 +1295,7 @@ final class And_ToolKit_Plugin {
         echo '<div class="wrap" id="and-toolkit-admin-root" data-version="' . esc_attr( self::VERSION ) . '">';
         echo '<h1>' . esc_html__( 'And ToolKit', 'and-toolkit' ) . ' <small>v' . esc_html( self::VERSION ) . '</small></h1>';
 
+        settings_errors();
         if ( isset( $_GET['atk_optimized'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
             echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Az oldal-gyorsítótár és az objektum-gyorsítótár kiürítve.', 'and-toolkit' ) . '</p></div>';
         }
@@ -1285,13 +1311,17 @@ final class And_ToolKit_Plugin {
             )
         );
         echo '</p></div>';
+        $ip = self::client_ip();
+        if ( '' === $ip || false === filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+            echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'A szerver privát/helyi IP-címet lát (valószínűleg fordított proxy vagy CDN mögött fut). Az audit napló IP-címei és a sebességkorlátozás ilyenkor pontatlan. Állítsa be az and_toolkit_client_ip szűrőt a valódi kliens IP-cím kiolvasásához.', 'and-toolkit' ) . '</p></div>';
+        }
 
         echo '<form method="post" action="options.php">';
         settings_fields( 'and_toolkit_group' );
         foreach ( self::settings_schema() as $group => $fields ) {
             echo '<h2>' . esc_html( $titles[ $group ] ?? $group ) . '</h2><table class="form-table" role="presentation">';
             foreach ( $fields as $key => $def ) {
-                self::render_field( self::OPTION_KEY . '[' . $group . '][' . $key . ']', $def, $config[ $group ][ $key ] );
+                self::render_field( self::OPTION_KEY . '[' . $group . '][' . $key . ']', $def, $config[ $group ][ $key ] ?? '' );
             }
             echo '</table>';
         }
@@ -1358,10 +1388,6 @@ final class And_ToolKit_Plugin {
     // FRONTEND ASSETS (beágyazott CSS + Vanilla JS, jQuery nélkül)
     // ========================================================================
 
-    private static function consent_categories_config(): array {
-        return self::get_config()['gdpr']['default_categories'];
-    }
-
     public static function enqueue_frontend_assets(): void {
         $config = self::get_config();
         wp_register_style( 'and-toolkit-frontend', false, [], self::VERSION );
@@ -1388,9 +1414,9 @@ final class And_ToolKit_Plugin {
             'liveAjax'  => (bool) $config['search']['live_ajax'],
             'gdprOn'    => (bool) $config['gdpr']['enabled'],
             'gcm'       => (bool) $config['gdpr']['google_consent_mode_v2'],
+            'ajax'      => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
             'expiry'    => (int) $config['gdpr']['expiry_days'],
             'privacy'   => esc_url_raw( (string) $config['gdpr']['privacy_url'] ),
-            'defaults'  => self::consent_categories_config(),
             'i18n'      => [
                 'acceptAll'   => 'Összes elfogadása',
                 'essential'   => 'Csak a szükségesek',
@@ -1413,8 +1439,12 @@ final class And_ToolKit_Plugin {
         wp_add_inline_script( 'and-toolkit-frontend', 'window.ATK = ' . wp_json_encode( $js_config ) . ';', 'before' );
         wp_add_inline_script( 'and-toolkit-frontend', self::frontend_js() );
 
-        if ( is_singular() && comments_open() && $config['captcha']['protect_comments'] && ! self::captcha_should_bypass() ) {
+        if ( is_singular() && comments_open() && ! is_user_logged_in() && $config['captcha']['protect_comments'] && ! self::captcha_should_bypass() ) {
             self::enqueue_captcha_provider_script();
+        }
+        // A buborék belépő űrlap a láblécben jelenik meg, de a CAPTCHA szkriptet még a wp_footer szkript-kiírása előtt sorba kell állítani.
+        if ( ! empty( $config['wp_hide']['enabled'] ) && ! empty( $config['wp_hide']['enable_ajax_bubble_login'] ) && ! is_user_logged_in() ) {
+            self::enqueue_login_form_captcha();
         }
     }
 
@@ -1524,6 +1554,15 @@ final class And_ToolKit_Plugin {
 .atk-gdpr--bottom-bar{position:fixed;left:0;right:0;bottom:0;z-index:99990;margin:0;border-radius:0}
 .atk-gdpr--floating-card{position:fixed;right:1rem;bottom:1rem;z-index:99990;max-width:360px;margin:0;box-shadow:0 8px 30px rgba(0,0,0,.25)}
 .atk-gdpr--modal-center{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:99990;max-width:480px;width:calc(100% - 2rem);margin:0;box-shadow:0 0 0 100vmax rgba(0,0,0,.5)}
+.atk-reopen{position:fixed;left:.75rem;bottom:.75rem;z-index:99989;padding:.3rem .6rem;border-radius:999px;background:#fff;color:#2563eb;border:1px solid #d0d7de;font:12px system-ui,sans-serif;text-decoration:none}
+.atk-bubble-login{position:fixed;bottom:1rem;z-index:99988}
+.atk-bubble-login[data-position=bottom-right]{right:1rem}
+.atk-bubble-login[data-position=bottom-left]{left:1rem}
+.atk-bubble-trigger{padding:.6rem 1rem;border:0;border-radius:999px;background:#2563eb;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.25);cursor:pointer;font:600 14px system-ui,sans-serif}
+.atk-bubble-panel{position:absolute;bottom:3.2rem;width:290px;max-width:calc(100vw - 2rem);padding:1rem;border-radius:12px;background:#fff;color:#1f2328;box-shadow:0 8px 30px rgba(0,0,0,.3);font:14px/1.4 system-ui,sans-serif}
+.atk-bubble-login[data-position=bottom-right] .atk-bubble-panel{right:0}
+.atk-bubble-panel input[type=text],.atk-bubble-panel input[type=password]{width:100%;box-sizing:border-box}
+.atk-bubble-msg{color:#b42318;margin:.4rem 0 0}
 .atk-hidden{display:none!important}
 @media (prefers-color-scheme:dark){.atk-widget{background:#161b22;color:#e6edf3;border-color:#30363d}.atk-widget li{border-color:#30363d}.atk-widget a{color:#58a6ff}.atk-cal-grid td,.atk-cal-grid th{border-color:#30363d}.atk-cal-grid .atk-has-event{background:#1f3a5f}.atk-search input[type=search],.atk-search select{background:#0d1117;color:inherit;border-color:#30363d}}
 CSS;
@@ -1543,7 +1582,7 @@ function rid(){var a=new Uint8Array(16);(window.crypto||{getRandomValues:functio
 /* ---------- Hozzájárulás (GDPR) ---------- */
 function getConsent(){var m=d.cookie.match(/(?:^|; )atk_consent=([^;]*)/);if(!m)return null;try{return JSON.parse(decodeURIComponent(m[1]));}catch(e){return null;}}
 function allowed(cat){if(!C.gdprOn)return true;if(cat==='necessary')return true;var c=getConsent();return !!(c&&c.cats&&c.cats[cat]);}
-function activateScripts(){all('script[type="text/plain"][data-atk-category]').forEach(function(s){if(!allowed(s.getAttribute('data-atk-category')))return;var n=d.createElement('script');for(var i=0;i<s.attributes.length;i++){var a=s.attributes[i];if(a.name!=='type'&&a.name!=='data-atk-category')n.setAttribute(a.name,a.value);}n.text=s.text;s.parentNode.replaceChild(n,s);});}
+function activateScripts(){all('script[type="text/plain"][data-atk-category]').forEach(function(s){if(!allowed(s.getAttribute('data-atk-category')))return;var n=d.createElement('script');for(var i=0;i<s.attributes.length;i++){var a=s.attributes[i];if(a.name!=='type'&&a.name!=='data-atk-category')n.setAttribute(a.name,a.value);}n.text=s.text;if(n.src&&!s.hasAttribute('async'))n.async=false;s.parentNode.replaceChild(n,s);});}
 function applyConsent(cats){
  if(C.gcm&&typeof window.gtag==='function'){window.gtag('consent','update',{analytics_storage:cats.analytics?'granted':'denied',ad_storage:cats.marketing?'granted':'denied',ad_user_data:cats.marketing?'granted':'denied',ad_personalization:cats.marketing?'granted':'denied',functionality_storage:cats.preferences?'granted':'denied',personalization_storage:cats.preferences?'granted':'denied'});}
  activateScripts();trackVisit();
@@ -1555,17 +1594,17 @@ function saveConsent(level,cats){
  post('cookie-consent',{consent_level:level,consent_id:id,categories:cats}).catch(function(){});
  applyConsent(cats);syncBanners();
 }
-function syncBanners(){all('.atk-gdpr-cookie').forEach(function(b){var done=!!getConsent();if(b.getAttribute('data-style')!=='sidebar-widget')b.classList.toggle('atk-hidden',done);});}
+function syncBanners(){var done=!!getConsent();all('.atk-gdpr-cookie').forEach(function(b){if(b.getAttribute('data-style')!=='sidebar-widget')b.classList.toggle('atk-hidden',done);});all('.atk-reopen').forEach(function(a){a.classList.toggle('atk-hidden',!done);});}
 function buildBanner(b){
  if(b.getAttribute('data-ready'))return;b.setAttribute('data-ready','1');
  var p=el('p','',T.intro);b.appendChild(p);
  var panel=el('div','atk-hidden'),boxes={};
  [['necessary',true],['preferences',false],['analytics',false],['marketing',false]].forEach(function(c){
-  var l=el('label'),i=d.createElement('input');i.type='checkbox';i.checked=c[1]||!!(C.defaults&&C.defaults[c[0]]);i.disabled=c[1];boxes[c[0]]=i;l.appendChild(i);l.appendChild(d.createTextNode(' '+T[c[0]]));panel.appendChild(l);});
+  var l=el('label'),i=d.createElement('input');i.type='checkbox';i.checked=c[1];i.disabled=c[1];boxes[c[0]]=i;l.appendChild(i);l.appendChild(d.createTextNode(' '+T[c[0]]));panel.appendChild(l);});
  var row=el('div','atk-row');
  function btn(txt,alt,fn){var x=el('button','atk-btn'+(alt?' atk-alt':''),txt);x.type='button';x.addEventListener('click',fn);return x;}
  row.appendChild(btn(T.acceptAll,false,function(){saveConsent('all',{necessary:true,preferences:true,analytics:true,marketing:true});}));
- row.appendChild(btn(T.essential,true,function(){saveConsent('essential',{necessary:true,preferences:false,analytics:false,marketing:false});}));
+ row.appendChild(btn(T.essential,false,function(){saveConsent('essential',{necessary:true,preferences:false,analytics:false,marketing:false});}));
  var cust=btn(T.customize,true,function(){panel.classList.toggle('atk-hidden');});row.appendChild(cust);
  panel.appendChild(btn(T.save,false,function(){saveConsent('custom',{necessary:true,preferences:boxes.preferences.checked,analytics:boxes.analytics.checked,marketing:boxes.marketing.checked});}));
  b.appendChild(row);b.appendChild(panel);
@@ -1611,7 +1650,7 @@ function initSearch(w){
     if(w.getAttribute('data-layout')!=='minimal'&&it.excerpt){var s=el('span','atk-excerpt');mark(s,it.excerpt,q);li.appendChild(s);}list.appendChild(li);});
   }).catch(function(){});
  }
- inp.addEventListener('input',function(){if(!C.liveAjax)return;clearTimeout(timer);timer=setTimeout(run,C.debounce);});
+ inp.addEventListener('input',function(){if(!C.liveAjax||w.getAttribute('data-ajax')==='false')return;clearTimeout(timer);timer=setTimeout(run,C.debounce);});
  inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();clearTimeout(timer);run();}});
  if(sel)sel.addEventListener('change',run);
 }
@@ -1625,6 +1664,20 @@ all('.atk-info-banner[data-dismissible=true]').forEach(function(b){
 var bgs=all('[data-atk-bg]');
 function loadBg(n){var u=n.getAttribute('data-atk-bg');if(u){n.style.backgroundImage='url("'+u.replace(/"/g,'%22')+'")';n.removeAttribute('data-atk-bg');}}
 if('IntersectionObserver' in window){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){loadBg(e.target);io.unobserve(e.target);}});});bgs.forEach(function(n){io.observe(n);});}else{bgs.forEach(loadBg);}
+
+/* ---------- AJAX belépő buborék ---------- */
+all('.atk-bubble-login').forEach(function(w){
+ var t=w.querySelector('.atk-bubble-trigger'),p=w.querySelector('.atk-bubble-panel'),f=w.querySelector('form');if(!t||!p||!f)return;
+ t.addEventListener('click',function(){var hidden=p.classList.toggle('atk-hidden');t.setAttribute('aria-expanded',String(!hidden));});
+ var msg=el('p','atk-bubble-msg');msg.setAttribute('role','alert');f.appendChild(msg);
+ f.addEventListener('submit',function(e){
+  if(!window.fetch||!C.ajax||!window.FormData)return;
+  e.preventDefault();msg.textContent='…';
+  var go=function(){var fd=new FormData(f);fd.append('action','wtk_bubble_login');
+   fetch(C.ajax,{method:'POST',credentials:'same-origin',body:fd}).then(function(r){return r.json();}).then(function(j){if(j&&j.success){location.reload();}else{msg.textContent=(j&&j.data&&j.data.message)||'Hiba';}}).catch(function(){msg.textContent='Hálózati hiba';});};
+  (window.atkCaptchaRefresh?window.atkCaptchaRefresh(f):Promise.resolve()).then(go,go);
+ });
+});
 
 /* ---------- Indítás ---------- */
 all('.atk-search').forEach(initSearch);
@@ -1645,7 +1698,7 @@ JS;
 
     private static function format_number( int $n, string $format ): string {
         return match ( $format ) {
-            'compact' => $n >= 1000000 ? number_format( $n / 1000000, 1, '.', '' ) . 'M' : ( $n >= 1000 ? number_format( $n / 1000, 1, '.', '' ) . 'K' : (string) $n ),
+            'compact' => $n >= 999950 ? number_format( $n / 1000000, 1, '.', '' ) . 'M' : ( $n >= 1000 ? number_format( $n / 1000, 1, '.', '' ) . 'K' : (string) $n ),
             'comma'   => number_format( $n, 0, '.', ',' ),
             default   => number_format( $n, 0, ',', ' ' ),
         };
@@ -1747,6 +1800,7 @@ JS;
         }
         $atts   = shortcode_atts( [ 'layout' => $config['layout'], 'ajax' => $config['live_ajax'] ? 'true' : 'false' ], is_array( $atts ) ? $atts : [], 'wtk_search' );
         $layout = self::pick( (string) $atts['layout'], [ 'minimal', 'detailed', 'compact-cards' ], 'detailed' );
+        $ajax   = self::pick( strtolower( (string) $atts['ajax'] ), [ 'true', 'false' ], 'true' );
         $types  = [];
         foreach ( $config['post_types'] as $slug ) {
             $object = get_post_type_object( (string) $slug );
@@ -1755,8 +1809,9 @@ JS;
             }
         }
         return sprintf(
-            '<section class="atk-widget atk-search" data-layout="%s" data-debounce="%d" data-types="%s"><h3>%s</h3></section>',
+            '<section class="atk-widget atk-search" data-layout="%s" data-ajax="%s" data-debounce="%d" data-types="%s"><h3>%s</h3></section>',
             esc_attr( $layout ),
+            esc_attr( $ajax ),
             absint( $config['debounce_ms'] ),
             esc_attr( (string) wp_json_encode( $types ) ),
             esc_html( $config['title'] )
@@ -1823,12 +1878,20 @@ JS;
         return $html . '</div></section>';
     }
 
+    private static bool $cookie_widget_rendered = false;
+
     public static function render_cookie_consent_widget( $atts = [] ): string {
         $config = self::get_config()['gdpr'];
         if ( ! $config['enabled'] ) {
             return '';
         }
-        $style = self::pick( (string) $config['display_style'], [ 'sidebar-widget', 'bottom-bar', 'floating-card', 'modal-center' ], 'sidebar-widget' );
+        self::$cookie_widget_rendered = true;
+        return self::cookie_widget_html( (string) $config['display_style'] );
+    }
+
+    private static function cookie_widget_html( string $requested_style ): string {
+        $config = self::get_config()['gdpr'];
+        $style  = self::pick( $requested_style, [ 'sidebar-widget', 'bottom-bar', 'floating-card', 'modal-center' ], 'sidebar-widget' );
         return sprintf(
             '<section class="atk-widget atk-gdpr-cookie atk-gdpr--%1$s" data-style="%1$s" data-expiry="%2$d" data-gcm-v2="%3$s" role="region" aria-label="%4$s"><h3>%4$s</h3><a href="%5$s">Adatvédelmi tájékoztató</a> <a href="#" data-atk-open-consent>Süti-beállítások módosítása</a></section>',
             esc_attr( $style ),
@@ -1929,15 +1992,22 @@ JS;
         return '' === $keys['site_key'] || '' === $keys['secret_key'];
     }
 
+    private static bool $captcha_script_queued = false;
+
     private static function enqueue_captcha_provider_script(): void {
-        $keys = self::captcha_active_keys();
+        if ( self::$captcha_script_queued ) {
+            return; // az inline kezelőt oldalanként csak egyszer adjuk hozzá
+        }
+        self::$captcha_script_queued = true;
+        $keys                        = self::captcha_active_keys();
         if ( 'turnstile' === $keys['provider'] ) {
             wp_enqueue_script( 'atk-turnstile', 'https://challenges.cloudflare.com/turnstile/v0/api.js', [], null, true ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
         } else {
             wp_enqueue_script( 'atk-recaptcha-v3', 'https://www.google.com/recaptcha/api.js?render=' . rawurlencode( $keys['site_key'] ), [], null, true ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
+            // A reCAPTCHA token ~2 percig érvényes: ezért beküldéskor kérünk frisset (az AJAX buborék űrlap saját kezelővel hívja az atkCaptchaRefresh-t).
             wp_add_inline_script(
                 'atk-recaptcha-v3',
-                'document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll(".atk-recaptcha-token[data-sitekey]").forEach(function(i){var k=i.getAttribute("data-sitekey");if(k&&window.grecaptcha&&window.grecaptcha.ready){window.grecaptcha.ready(function(){window.grecaptcha.execute(k,{action:"submit"}).then(function(t){i.value=t;});});}});});'
+                '(function(){var d=document;function run(k){return new Promise(function(res){if(!window.grecaptcha||!window.grecaptcha.ready){res("");return;}window.grecaptcha.ready(function(){window.grecaptcha.execute(k,{action:"atk_submit"}).then(res,function(){res("");});});});}window.atkCaptchaRefresh=function(f){var i=f.querySelector(".atk-recaptcha-token[data-sitekey]");if(!i){return Promise.resolve();}return run(i.getAttribute("data-sitekey")).then(function(t){i.value=t;});};d.addEventListener("submit",function(e){var f=e.target;if(!f||!f.querySelector||f.__atkOk||f.id==="atk-bubble-form"){return;}if(!f.querySelector(".atk-recaptcha-token[data-sitekey]")){return;}e.preventDefault();window.atkCaptchaRefresh(f).then(function(){f.__atkOk=true;if(f.requestSubmit){f.requestSubmit(e.submitter||undefined);}else{f.submit();}});},true);})();'
             );
         }
     }
@@ -2005,14 +2075,22 @@ JS;
         );
 
         if ( is_wp_error( $response ) ) {
-            return [ 'success' => false, 'score' => 0.0, 'error' => $response->get_error_message() ];
+            // Hálózati hiba a szolgáltató felé: alapból nem zárjuk ki a látogatókat (és az adminokat), a hiba naplózódik. Szigorításhoz: add_filter( 'and_toolkit_captcha_fail_open', '__return_false' ).
+            self::log_event( 'bot_protection', 'warning', 'Botvédelem: a szolgáltató nem érhető el (' . $response->get_error_message() . ')', $expected_action );
+            $open = (bool) apply_filters( 'and_toolkit_captcha_fail_open', true, $expected_action );
+            return [ 'success' => $open, 'score' => 0.0, 'error' => $response->get_error_message(), 'provider' => 'unreachable' ];
         }
 
         $body    = json_decode( (string) wp_remote_retrieve_body( $response ), true );
         $body    = is_array( $body ) ? $body : [];
         $ok      = ! empty( $body['success'] );
         $score   = isset( $body['score'] ) ? (float) $body['score'] : ( $ok ? 1.0 : 0.0 );
-        $passed  = 'turnstile' === $keys['provider'] ? $ok : ( $ok && $score >= $keys['threshold'] );
+        $passed  = 'turnstile' === $keys['provider'] ? $ok : ( $ok && $score >= $keys['threshold'] && 'atk_submit' === (string) ( $body['action'] ?? '' ) );
+        $host    = strtolower( (string) ( $body['hostname'] ?? '' ) );
+        $site    = strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
+        if ( $passed && '' !== $host && $host !== $site && ! str_ends_with( $host, '.' . $site ) && ! str_ends_with( $site, '.' . $host ) ) {
+            $passed = false; // más domainre kiadott token
+        }
 
         if ( $passed ) {
             self::increment_counter( 'and_toolkit_captcha_verified' );
@@ -2046,7 +2124,8 @@ JS;
 
     public static function verify_login_captcha( $user, string $username = '', string $password = '' ) {
         $cap = self::get_config()['captcha'];
-        if ( ! $cap['protect_login'] || '' === $username || self::captcha_should_bypass() ) {
+        // Csak a böngészős bejelentkező űrlapot védjük: az XML-RPC, REST (alkalmazásjelszó), WP-CLI és cron belépést nem
+        if ( ! $cap['protect_login'] || '' === $username || ! self::is_form_login() || self::captcha_should_bypass() ) {
             return $user;
         }
         $check = self::verify_captcha_token( self::posted_captcha_token(), 'login' );
@@ -2084,7 +2163,8 @@ JS;
 
     public static function verify_comment_captcha( array $commentdata ): array {
         $cap = self::get_config()['captcha'];
-        if ( ! $cap['protect_comments'] || self::captcha_should_bypass() ) {
+        // A komment-űrlap CAPTCHA mezője csak kijelentkezett látogatóknak jelenik meg, ezért a bejelentkezettek nem ellenőrizhetők (és nem is kell)
+        if ( ! $cap['protect_comments'] || is_user_logged_in() || self::captcha_should_bypass() ) {
             return $commentdata;
         }
         $check = self::verify_captcha_token( self::posted_captcha_token(), 'comment' );
@@ -2126,10 +2206,13 @@ JS;
 
     public static function render_gdpr_footer_banner(): void {
         $config = self::get_config()['gdpr'];
-        if ( ! $config['enabled'] || 'sidebar-widget' === $config['display_style'] ) {
-            return;
+        if ( ! $config['enabled'] || self::$cookie_widget_rendered ) {
+            return; // a rövidkóddal elhelyezett widget már kirajzolódott
         }
-        echo self::render_cookie_consent_widget(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escape-elt kimenet
+        // Ha a rövidkód sehol nincs elhelyezve (oldalsáv stílusnál), a látogatót akkor is meg kell kérdezni: lebegő kártya a tartalék.
+        $style = 'sidebar-widget' === $config['display_style'] ? 'floating-card' : (string) $config['display_style'];
+        echo self::cookie_widget_html( $style ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escape-elt kimenet
+        echo '<a href="#" class="atk-reopen atk-hidden" data-atk-open-consent>' . esc_html__( 'Süti-beállítások', 'and-toolkit' ) . '</a>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     // ========================================================================
@@ -2214,30 +2297,6 @@ JS;
                 ],
             ]
         );
-        register_rest_route(
-            self::REST_NS,
-            '/auth-sync-time',
-            [
-                'methods'             => 'POST',
-                'callback'            => [ __CLASS__, 'handle_auth_time_sync' ],
-                'permission_callback' => static fn(): bool => is_user_logged_in(),
-                'args'                => [
-                    'client_unix_ms' => [
-                        'required'          => true,
-                        'sanitize_callback' => 'absint',
-                    ],
-                ],
-            ]
-        );
-        register_rest_route(
-            self::REST_NS,
-            '/bubble-login',
-            [
-                'methods'             => 'POST',
-                'callback'            => [ __CLASS__, 'handle_ajax_bubble_login' ],
-                'permission_callback' => '__return_true',
-            ]
-        );
     }
 
     public static function handle_ajax_search( \\WP_REST_Request $request ): \\WP_REST_Response {
@@ -2308,7 +2367,7 @@ JS;
     }
 
     public static function handle_cookie_consent( \\WP_REST_Request $request ) {
-        if ( ! self::rate_limit( 'consent', 3 ) ) {
+        if ( ! self::rate_limit( 'consent', 2, (string) $request->get_param( 'consent_id' ) ) ) {
             return new \\WP_Error( 'and_toolkit_rate_limited', 'Túl sok kérés.', [ 'status' => 429 ] );
         }
         global $wpdb;
@@ -2379,158 +2438,533 @@ JS;
     }
 
     // ========================================================================
-    // 10. HITELESÍTÉS MODUL: 2FA TOTP, IDŐSZINKRON, PASSKEY, E-MAIL OTP, OFFLINE KÓDOK (v0.7.0)
+    // IP-LISTÁK (egyedi cím és CIDR, IPv4 + IPv6)
     // ========================================================================
 
-    private static function ip_in_whitelist( string $client_ip, array $whitelist ): bool {
-        $client_ip = trim( $client_ip );
-        if ( '' === $client_ip ) {
+    private static function ip_matches( string $ip, string $entry ): bool {
+        $entry = trim( $entry );
+        if ( '' === $entry || '' === $ip ) {
             return false;
         }
+        $ip_bin = @inet_pton( $ip ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+        if ( false === $ip_bin ) {
+            return false;
+        }
+        if ( ! str_contains( $entry, '/' ) ) {
+            $entry_bin = @inet_pton( $entry ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+            return false !== $entry_bin && $entry_bin === $ip_bin;
+        }
+        [ $net, $bits ] = explode( '/', $entry, 2 );
+        $net_bin        = @inet_pton( $net ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+        if ( false === $net_bin || ! ctype_digit( $bits ) || strlen( $net_bin ) !== strlen( $ip_bin ) ) {
+            return false;
+        }
+        $bits = (int) $bits;
+        if ( $bits > strlen( $net_bin ) * 8 ) {
+            return false;
+        }
+        $bytes = intdiv( $bits, 8 );
+        if ( $bytes > 0 && substr( $net_bin, 0, $bytes ) !== substr( $ip_bin, 0, $bytes ) ) {
+            return false;
+        }
+        $rest = $bits % 8;
+        if ( $rest > 0 ) {
+            $mask = ( 0xFF << ( 8 - $rest ) ) & 0xFF;
+            return ( ord( $net_bin[ $bytes ] ) & $mask ) === ( ord( $ip_bin[ $bytes ] ) & $mask );
+        }
+        return true;
+    }
+
+    private static function ip_in_whitelist( string $client_ip, array $whitelist ): bool {
         foreach ( $whitelist as $entry ) {
+            if ( self::ip_matches( trim( $client_ip ), (string) $entry ) ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static function sanitize_ip_list( string $raw ): array {
+        $out = [];
+        foreach ( preg_split( '/[\\s,;]+/', $raw ) ?: [] as $entry ) {
             $entry = trim( (string) $entry );
             if ( '' === $entry ) {
                 continue;
             }
-            if ( $entry === $client_ip ) {
-                return true;
+            $parts = explode( '/', $entry, 2 );
+            if ( false === filter_var( $parts[0], FILTER_VALIDATE_IP ) ) {
+                continue;
             }
-            if ( str_ends_with( $entry, '/24' ) ) {
-                $prefix = implode( '.', array_slice( explode( '.', substr( $entry, 0, -3 ) ), 0, 3 ) ) . '.';
-                if ( str_starts_with( $client_ip, $prefix ) ) {
-                    return true;
-                }
+            if ( isset( $parts[1] ) && ( ! ctype_digit( $parts[1] ) || (int) $parts[1] > ( str_contains( $parts[0], ':' ) ? 128 : 32 ) ) ) {
+                continue;
             }
+            $out[] = $entry;
         }
-        return false;
+        return array_values( array_unique( $out ) );
     }
 
-    public static function preserve_auth_credentials_on_update( $upgrader = null, array $hook_extra = [] ): void {
-        $stored = get_option( self::OPTION_KEY, [] );
-        if ( ! is_array( $stored ) || empty( $stored['auth'] ) ) {
-            return;
+    // ========================================================================
+    // 10. HITELESÍTÉS MODUL: 2FA (TOTP RFC 6238) + VISSZAÁLLÍTÓ KÓDOK
+    //     Passkey és e-mail OTP: még nincs a PHP-ban (csak a Studio előnézetében).
+    // ========================================================================
+
+    private static function base32_encode( string $bin ): string {
+        if ( '' === $bin ) {
+            return '';
         }
-        // Garantáljuk, hogy bővítmény frissítéskor a 2FA titkos kulcs, Passkey-k és Offline mentett kódok érintetlenek maradnak.
-        $vault = [
-            'totp_secret'       => $stored['auth']['totp_secret'] ?? '',
-            'passkeys'          => $stored['auth']['passkeys'] ?? [],
-            'offline_passwords' => $stored['auth']['offline_passwords'] ?? [],
-            'role_policies'     => $stored['auth']['role_policies'] ?? [],
-            'whitelisted_ips'   => $stored['auth']['whitelisted_ips'] ?? [],
-            'saved_at'          => gmdate( 'c' ),
-            'version'           => self::VERSION,
-        ];
-        update_option( 'and_toolkit_auth_vault_backup', $vault, false );
+        $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        $bits     = '';
+        foreach ( str_split( $bin ) as $char ) {
+            $bits .= str_pad( decbin( ord( $char ) ), 8, '0', STR_PAD_LEFT );
+        }
+        $out = '';
+        foreach ( str_split( $bits, 5 ) as $chunk ) {
+            $out .= $alphabet[ (int) bindec( str_pad( $chunk, 5, '0' ) ) ];
+        }
+        return $out;
     }
 
-    public static function verify_totp_with_time_drift( string $secret, string $code, ?int $unix_now = null ): bool {
-        $auth      = self::get_config()['auth'];
-        $clean     = preg_replace( '/\\D/', '', $code );
-        $unix_base = ( $unix_now ?? time() ) + (int) ( $auth['manual_time_offset_sec'] ?? 0 );
-        $tolerance = max( 0, min( 5, (int) ( $auth['time_drift_tolerance_windows'] ?? 1 ) ) );
-        if ( 6 !== strlen( (string) $clean ) || '' === trim( $secret ) ) {
-            return false;
+    private static function base32_decode( string $b32 ): string {
+        $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        $b32      = strtoupper( (string) preg_replace( '/[^A-Za-z2-7]/', '', $b32 ) );
+        if ( '' === $b32 ) {
+            return '';
         }
+        $bits = '';
+        foreach ( str_split( $b32 ) as $char ) {
+            $bits .= str_pad( decbin( (int) strpos( $alphabet, $char ) ), 5, '0', STR_PAD_LEFT );
+        }
+        $out = '';
+        foreach ( str_split( $bits, 8 ) as $byte ) {
+            if ( 8 === strlen( $byte ) ) {
+                $out .= chr( (int) bindec( $byte ) );
+            }
+        }
+        return $out;
+    }
+
+    private static function totp_at( string $key, int $counter ): string {
+        $digest = hash_hmac( 'sha1', pack( 'J', $counter ), $key, true );
+        $offset = ord( $digest[19] ) & 0x0f;
+        $binary = ( ( ord( $digest[ $offset ] ) & 0x7f ) << 24 )
+            | ( ( ord( $digest[ $offset + 1 ] ) & 0xff ) << 16 )
+            | ( ( ord( $digest[ $offset + 2 ] ) & 0xff ) << 8 )
+            | ( ord( $digest[ $offset + 3 ] ) & 0xff );
+        return str_pad( (string) ( $binary % 1000000 ), 6, '0', STR_PAD_LEFT );
+    }
+
+    /**
+     * Base32 titkos kulcs + 6 jegyű kód ellenőrzése ±tűrés ablakkal. A találat időablak-számlálóját adja (újrajátszás-védelemhez), vagy null-t.
+     */
+    public static function verify_totp_with_time_drift( string $secret_b32, string $code, ?int $unix_now = null ): ?int {
+        $code = (string) preg_replace( '/\\D/', '', $code );
+        $key  = self::base32_decode( $secret_b32 );
+        if ( 6 !== strlen( $code ) || '' === $key ) {
+            return null;
+        }
+        $tolerance = max( 0, min( 5, (int) self::get_config()['auth']['time_drift_tolerance_windows'] ) );
+        $base      = (int) floor( ( $unix_now ?? time() ) / 30 );
         for ( $w = -$tolerance; $w <= $tolerance; $w++ ) {
-            $counter  = (int) floor( ( $unix_base + ( $w * 30 ) ) / 30 );
-            $digest   = hash_hmac( 'sha1', pack( 'N*', 0, $counter ), strtoupper( trim( $secret ) ), true );
-            $offset   = ord( $digest[19] ) & 0x0f;
-            $binary   = ( ( ord( $digest[ $offset ] ) & 0x7f ) << 24 )
-                | ( ( ord( $digest[ $offset + 1 ] ) & 0xff ) << 16 )
-                | ( ( ord( $digest[ $offset + 2 ] ) & 0xff ) << 8 )
-                | ( ord( $digest[ $offset + 3 ] ) & 0xff );
-            $expected = str_pad( (string) ( $binary % 1000000 ), 6, '0', STR_PAD_LEFT );
-            if ( hash_equals( $expected, (string) $clean ) ) {
-                return true;
+            if ( hash_equals( self::totp_at( $key, $base + $w ), $code ) ) {
+                return $base + $w;
             }
         }
-        return false;
+        return null;
+    }
+
+    private static function crypto_key(): string {
+        return hash( 'sha256', wp_salt( 'auth' ) . '|and-toolkit-2fa', true );
+    }
+
+    private static function encrypt_secret( string $plain ): string {
+        $nonce = random_bytes( SODIUM_CRYPTO_SECRETBOX_NONCEBYTES );
+        return base64_encode( $nonce . sodium_crypto_secretbox( $plain, $nonce, self::crypto_key() ) );
+    }
+
+    private static function decrypt_secret( string $blob ): string {
+        $raw = base64_decode( $blob, true );
+        if ( false === $raw || strlen( $raw ) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES ) {
+            return '';
+        }
+        $plain = sodium_crypto_secretbox_open( substr( $raw, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES ), substr( $raw, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES ), self::crypto_key() );
+        return false === $plain ? '' : $plain;
+    }
+
+    private static function recovery_hash( string $code ): string {
+        return hash_hmac( 'sha256', strtolower( (string) preg_replace( '/[^A-Za-z0-9]/', '', $code ) ), wp_salt( 'auth' ) );
+    }
+
+    private static function totp_state( int $user_id ): array {
+        $state = get_user_meta( $user_id, 'and_toolkit_totp', true );
+        $state = is_array( $state ) ? $state : [];
+        return [
+            'enabled'      => ! empty( $state['enabled'] ),
+            'secret'       => (string) ( $state['secret'] ?? '' ),
+            'last_counter' => (int) ( $state['last_counter'] ?? 0 ),
+            'recovery'     => array_values( array_filter( (array) ( $state['recovery'] ?? [] ), 'is_string' ) ),
+        ];
+    }
+
+    private static function save_totp_state( int $user_id, array $state ): void {
+        update_user_meta( $user_id, 'and_toolkit_totp', $state );
+    }
+
+    private static function generate_recovery_codes( int $count = 10 ): array {
+        $codes = [];
+        for ( $i = 0; $i < $count; $i++ ) {
+            $raw     = substr( bin2hex( random_bytes( 5 ) ), 0, 10 );
+            $codes[] = substr( $raw, 0, 5 ) . '-' . substr( $raw, 5 );
+        }
+        return $codes;
     }
 
     public static function evaluate_user_auth_policy( \\WP_User $user, string $client_ip = '' ): array {
         $auth = self::get_config()['auth'];
         $ip   = '' !== $client_ip ? $client_ip : self::client_ip();
-        if ( ! $auth['enabled'] || self::ip_in_whitelist( $ip, (array) ( $auth['whitelisted_ips'] ?? [] ) ) ) {
-            return [ 'bypassed' => true, 'required' => [], 'optional' => [] ];
+        // Vészkapcsoló (pl. WordPress-só csere után, amikor a titkosított 2FA-kulcsok olvashatatlanná válnak): define( 'AND_TOOLKIT_DISABLE_2FA', true ); a wp-config.php-ban.
+        if ( ( defined( 'AND_TOOLKIT_DISABLE_2FA' ) && AND_TOOLKIT_DISABLE_2FA ) || ! $auth['enabled'] || ! $auth['totp_enabled'] || self::ip_in_whitelist( $ip, (array) $auth['whitelisted_ips'] ) ) {
+            return [ 'bypassed' => true, 'totp' => 'disabled' ];
         }
-        $roles    = is_array( $user->roles ) ? $user->roles : [];
-        $role     = (string) ( $roles[0] ?? 'subscriber' );
-        $policies = $auth['role_policies'][ $role ] ?? [];
-        $required = [];
-        $optional = [];
-        foreach ( [ 'totp', 'passkey', 'email', 'offline' ] as $method ) {
-            $pol = (string) ( $policies[ $method ] ?? 'optional' );
-            if ( 'required' === $pol ) {
-                $required[] = $method;
-            } elseif ( 'optional' === $pol ) {
-                $optional[] = $method;
-            }
-        }
-        return [
-            'bypassed' => false,
-            'role'     => $role,
-            'required' => $required,
-            'optional' => $optional,
-        ];
+        $roles = is_array( $user->roles ) ? $user->roles : [];
+        $role  = (string) ( $roles[0] ?? 'subscriber' );
+        $pol   = (string) ( $auth['role_policies'][ $role ]['totp'] ?? 'optional' );
+        return [ 'bypassed' => false, 'role' => $role, 'totp' => in_array( $pol, [ 'required', 'optional', 'disabled' ], true ) ? $pol : 'optional' ];
     }
 
-    public static function handle_auth_time_sync( \\WP_REST_Request $request ): \\WP_REST_Response {
-        $client_ms  = (int) $request->get_param( 'client_unix_ms' );
-        $client_sec = $client_ms > 0 ? (int) round( $client_ms / 1000 ) : time();
-        $offset_sec = max( -86400, min( 86400, $client_sec - time() ) );
-        $stored     = get_option( self::OPTION_KEY, [] );
-        $stored     = is_array( $stored ) ? $stored : [];
-        $stored['auth']['manual_time_offset_sec'] = $offset_sec;
-        $stored['auth']['last_time_sync_at']      = gmdate( 'c' );
-        update_option( self::OPTION_KEY, $stored, false );
-        self::flush_config_cache();
-        return new \\WP_REST_Response(
-            [
-                'status'                 => 'synced',
-                'manual_time_offset_sec' => $offset_sec,
-                'synced_at'              => gmdate( 'c' ),
-            ],
-            200
-        );
+    private static function is_form_login(): bool {
+        return isset( $_POST['log'], $_POST['pwd'] ) // phpcs:ignore WordPress.Security.NonceVerification
+            && ! defined( 'XMLRPC_REQUEST' ) && ! defined( 'REST_REQUEST' )
+            && ! ( defined( 'WP_CLI' ) && WP_CLI ) && ! wp_doing_cron();
+    }
+
+    private static function totp_field_html(): string {
+        $auth = self::get_config()['auth'];
+        if ( ! $auth['enabled'] || ! $auth['totp_enabled'] ) {
+            return '';
+        }
+        return '<p class="atk-totp-field"><label>' . esc_html__( '2FA kód (ha be van kapcsolva)', 'and-toolkit' ) . '<br /><input type="text" name="atk_totp" class="input" value="" size="20" inputmode="numeric" autocomplete="one-time-code" /></label></p>';
+    }
+
+    public static function render_totp_login_field(): void {
+        echo self::totp_field_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escape-elt kimenet
+    }
+
+    /**
+     * A jelszó ellenőrzése után kéri a 2FA kódot azoktól, akik bekapcsolták. Beállítás nélkül nem zár ki senkit.
+     */
+    private static bool $app_password_used = false;
+
+    public static function mark_app_password_used(): void {
+        self::$app_password_used = true;
+    }
+
+    public static function enforce_totp_login( $user, $username = '', $password = '' ) {
+        if ( ! $user instanceof \\WP_User ) {
+            return $user;
+        }
+        $is_api = ( defined( 'XMLRPC_REQUEST' ) && XMLRPC_REQUEST ) || ( defined( 'REST_REQUEST' ) && REST_REQUEST );
+        if ( ! $is_api && ! self::is_form_login() ) {
+            return $user;
+        }
+        $policy = self::evaluate_user_auth_policy( $user );
+        if ( ! empty( $policy['bypassed'] ) || 'disabled' === $policy['totp'] ) {
+            return $user;
+        }
+        $state = self::totp_state( (int) $user->ID );
+        if ( ! $state['enabled'] || '' === $state['secret'] ) {
+            return $user;
+        }
+        if ( $is_api ) {
+            // XML-RPC / REST: a 2FA-s fiók az igazi jelszavával nem léphet be (megkerülné a 2FA-t); alkalmazásjelszóval igen.
+            return self::$app_password_used ? $user : new \\WP_Error( 'and_toolkit_totp_api_blocked', __( 'Ez a fiók 2FA-val védett: API-hozzáféréshez használjon alkalmazásjelszót.', 'and-toolkit' ) );
+        }
+        $actor    = self::actor_for_user( $user );
+        $lock_key = 'atk_2fa_fail_' . (int) $user->ID;
+        if ( (int) get_transient( $lock_key ) >= 5 ) {
+            return new \\WP_Error( 'and_toolkit_totp_locked', __( 'Túl sok hibás 2FA kód. Próbálja újra 10 perc múlva.', 'and-toolkit' ) );
+        }
+        $code = isset( $_POST['atk_totp'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['atk_totp'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+        if ( '' === trim( $code ) ) {
+            return new \\WP_Error( 'and_toolkit_totp_required', __( 'Kétfaktoros hitelesítés: adja meg a hitelesítő alkalmazás 6 jegyű kódját (vagy egy visszaállító kódot).', 'and-toolkit' ) );
+        }
+        $counter = self::verify_totp_with_time_drift( self::decrypt_secret( $state['secret'] ), $code );
+        if ( null !== $counter && $counter > $state['last_counter'] ) {
+            $state['last_counter'] = $counter; // újrajátszás elleni védelem
+            self::save_totp_state( (int) $user->ID, $state );
+            delete_transient( $lock_key );
+            return $user;
+        }
+        $hash = self::recovery_hash( $code );
+        foreach ( $state['recovery'] as $index => $stored ) {
+            if ( hash_equals( $stored, $hash ) ) {
+                unset( $state['recovery'][ $index ] );
+                $state['recovery'] = array_values( $state['recovery'] );
+                self::save_totp_state( (int) $user->ID, $state );
+                delete_transient( $lock_key );
+                self::log_event( 'auth_security', 'warning', sprintf( 'Visszaállító kóddal történt belépés: %s (maradt: %d)', $user->user_login, count( $state['recovery'] ) ), $user->user_login, $actor );
+                return $user;
+            }
+        }
+        set_transient( $lock_key, (int) get_transient( $lock_key ) + 1, 10 * MINUTE_IN_SECONDS );
+        self::log_event( 'auth_security', 'warning', sprintf( 'Hibás 2FA kód: %s', $user->user_login ), $user->user_login, $actor );
+        return new \\WP_Error( 'and_toolkit_totp_invalid', __( 'Érvénytelen kétfaktoros kód.', 'and-toolkit' ) );
+    }
+
+    private static function totp_uri( \\WP_User $user, string $secret ): string {
+        $issuer = (string) self::get_config()['auth']['totp_issuer'];
+        $issuer = '' !== $issuer ? $issuer : get_bloginfo( 'name' );
+        return 'otpauth://totp/' . rawurlencode( $issuer . ':' . $user->user_login ) . '?secret=' . $secret . '&issuer=' . rawurlencode( $issuer ) . '&algorithm=SHA1&digits=6&period=30';
+    }
+
+    public static function render_profile_2fa( $profile_user ): void {
+        $auth = self::get_config()['auth'];
+        if ( ! $profile_user instanceof \\WP_User || ! $auth['enabled'] || ! $auth['totp_enabled'] ) {
+            return;
+        }
+        $uid     = (int) $profile_user->ID;
+        $is_self = get_current_user_id() === $uid;
+        if ( ! $is_self && ! current_user_can( 'edit_user', $uid ) ) {
+            return;
+        }
+        if ( 'disabled' === (string) ( $auth['role_policies'][ (string) ( $profile_user->roles[0] ?? 'subscriber' ) ]['totp'] ?? 'optional' ) ) {
+            return;
+        }
+        $state = self::totp_state( $uid );
+        echo '<h2>' . esc_html__( 'And ToolKit – kétfaktoros hitelesítés (2FA)', 'and-toolkit' ) . '</h2><table class="form-table" role="presentation"><tbody>';
+        wp_nonce_field( 'and_toolkit_2fa_' . $uid, 'and_toolkit_2fa_nonce' );
+
+        $message = get_transient( 'atk_2fa_msg_' . $uid );
+        if ( is_string( $message ) && '' !== $message ) {
+            delete_transient( 'atk_2fa_msg_' . $uid );
+            echo '<tr><th></th><td><div class="notice notice-info inline"><p>' . esc_html( $message ) . '</p></div></td></tr>';
+        }
+        $flash = get_user_meta( $uid, 'and_toolkit_recovery_flash', true );
+        if ( is_string( $flash ) && '' !== $flash ) {
+            delete_user_meta( $uid, 'and_toolkit_recovery_flash' );
+            echo '<tr><th>' . esc_html__( 'Visszaállító kódok', 'and-toolkit' ) . '</th><td><p><strong>' . esc_html__( 'Mentse el ezeket most, később nem jelennek meg újra! Mindegyik egyszer használható.', 'and-toolkit' ) . '</strong></p><pre style="font-size:15px">' . esc_html( self::decrypt_secret( $flash ) ) . '</pre></td></tr>';
+        }
+
+        if ( $state['enabled'] ) {
+            echo '<tr><th>' . esc_html__( 'Állapot', 'and-toolkit' ) . '</th><td><strong>' . esc_html__( 'Aktív', 'and-toolkit' ) . '</strong> · ' . esc_html( sprintf( 'Felhasználatlan visszaállító kód: %d', count( $state['recovery'] ) ) ) . '</td></tr>';
+            if ( $is_self ) {
+                echo '<tr><th><label for="atk-2fa-code">' . esc_html__( 'Jelenlegi 2FA kód', 'and-toolkit' ) . '</label></th><td><input type="text" id="atk-2fa-code" name="and_toolkit_2fa_code" inputmode="numeric" autocomplete="one-time-code" class="regular-text" /><p class="description">' . esc_html__( 'Kikapcsoláshoz vagy új visszaállító kódokhoz szükséges.', 'and-toolkit' ) . '</p><label><input type="checkbox" name="and_toolkit_2fa_regen" value="1" /> ' . esc_html__( 'Új visszaállító kódok készítése', 'and-toolkit' ) . '</label><br /><label><input type="checkbox" name="and_toolkit_2fa_disable" value="1" /> ' . esc_html__( '2FA kikapcsolása', 'and-toolkit' ) . '</label></td></tr>';
+            } else {
+                echo '<tr><th>' . esc_html__( 'Adminisztrátori művelet', 'and-toolkit' ) . '</th><td><label><input type="checkbox" name="and_toolkit_2fa_reset" value="1" /> ' . esc_html__( '2FA visszaállítása (elvesztett eszköz)', 'and-toolkit' ) . '</label></td></tr>';
+            }
+        } elseif ( $is_self ) {
+            $pending = get_user_meta( $uid, 'and_toolkit_totp_pending', true );
+            $secret  = is_string( $pending ) && '' !== $pending ? self::decrypt_secret( $pending ) : '';
+            if ( '' === $secret ) {
+                $secret = self::base32_encode( random_bytes( 20 ) );
+                update_user_meta( $uid, 'and_toolkit_totp_pending', self::encrypt_secret( $secret ) );
+            }
+            echo '<tr><th>' . esc_html__( 'Beállítás', 'and-toolkit' ) . '</th><td><p>' . esc_html__( 'Adja hozzá a kulcsot egy hitelesítő alkalmazáshoz (Google Authenticator, Aegis, 2FAS stb., „kulcs megadása” lehetőség), majd írja be az alkalmazás által mutatott kódot.', 'and-toolkit' ) . '</p><p><code style="font-size:16px">' . esc_html( trim( chunk_split( $secret, 4, ' ' ) ) ) . '</code></p><p class="description">' . esc_html( self::totp_uri( $profile_user, $secret ) ) . '</p></td></tr>';
+            echo '<tr><th><label for="atk-2fa-code">' . esc_html__( 'Ellenőrző kód', 'and-toolkit' ) . '</label></th><td><input type="text" id="atk-2fa-code" name="and_toolkit_2fa_code" inputmode="numeric" autocomplete="one-time-code" class="regular-text" /><p class="description">' . esc_html__( 'A profil mentésekor a kód ellenőrzése után aktiválódik, és megjelennek a visszaállító kódok.', 'and-toolkit' ) . '</p></td></tr>';
+        } else {
+            echo '<tr><th>' . esc_html__( 'Állapot', 'and-toolkit' ) . '</th><td>' . esc_html__( 'A felhasználó nem kapcsolta be a 2FA-t.', 'and-toolkit' ) . '</td></tr>';
+        }
+        echo '</tbody></table>';
+    }
+
+    public static function save_profile_2fa( $user_id ): void {
+        $uid = (int) $user_id;
+        if ( ! isset( $_POST['and_toolkit_2fa_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( (string) $_POST['and_toolkit_2fa_nonce'] ) ), 'and_toolkit_2fa_' . $uid ) ) {
+            return;
+        }
+        if ( ! current_user_can( 'edit_user', $uid ) ) {
+            return;
+        }
+        $user = get_userdata( $uid );
+        if ( ! $user instanceof \\WP_User ) {
+            return;
+        }
+        $is_self = get_current_user_id() === $uid;
+        $code    = isset( $_POST['and_toolkit_2fa_code'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['and_toolkit_2fa_code'] ) ) : '';
+        $state   = self::totp_state( $uid );
+        $actor   = self::current_actor();
+
+        if ( ! $state['enabled'] ) {
+            if ( ! $is_self || '' === trim( $code ) ) {
+                return;
+            }
+            $pending = get_user_meta( $uid, 'and_toolkit_totp_pending', true );
+            $secret  = is_string( $pending ) ? self::decrypt_secret( $pending ) : '';
+            $counter = '' !== $secret ? self::verify_totp_with_time_drift( $secret, $code ) : null;
+            if ( null === $counter ) {
+                set_transient( 'atk_2fa_msg_' . $uid, __( 'A megadott ellenőrző kód érvénytelen, a 2FA nem lett bekapcsolva.', 'and-toolkit' ), 60 );
+                return;
+            }
+            $codes = self::generate_recovery_codes();
+            self::save_totp_state( $uid, [
+                'enabled'      => true,
+                'secret'       => self::encrypt_secret( $secret ),
+                'last_counter' => $counter,
+                'recovery'     => array_map( [ __CLASS__, 'recovery_hash' ], $codes ),
+            ] );
+            delete_user_meta( $uid, 'and_toolkit_totp_pending' );
+            update_user_meta( $uid, 'and_toolkit_recovery_flash', self::encrypt_secret( implode( "\\n", $codes ) ) );
+            self::log_event( 'auth_security', 'info', sprintf( '2FA bekapcsolva: %s', $user->user_login ), $user->user_login, $actor );
+            return;
+        }
+
+        if ( ! $is_self ) {
+            if ( ! empty( $_POST['and_toolkit_2fa_reset'] ) ) {
+                delete_user_meta( $uid, 'and_toolkit_totp' );
+                delete_user_meta( $uid, 'and_toolkit_totp_pending' );
+                self::log_event( 'auth_security', 'warning', sprintf( '2FA visszaállítva adminisztrátor által: %s', $user->user_login ), $user->user_login, $actor );
+            }
+            return;
+        }
+        $wants_disable = ! empty( $_POST['and_toolkit_2fa_disable'] );
+        $wants_regen   = ! empty( $_POST['and_toolkit_2fa_regen'] );
+        if ( ! $wants_disable && ! $wants_regen ) {
+            return;
+        }
+        $counter = self::verify_totp_with_time_drift( self::decrypt_secret( $state['secret'] ), $code );
+        if ( null === $counter || $counter <= $state['last_counter'] ) {
+            set_transient( 'atk_2fa_msg_' . $uid, __( 'Érvényes, még fel nem használt 2FA kód szükséges a módosításhoz.', 'and-toolkit' ), 60 );
+            return;
+        }
+        if ( $wants_disable ) {
+            delete_user_meta( $uid, 'and_toolkit_totp' );
+            self::log_event( 'auth_security', 'warning', sprintf( '2FA kikapcsolva: %s', $user->user_login ), $user->user_login, $actor );
+            return;
+        }
+        $codes                 = self::generate_recovery_codes();
+        $state['recovery']     = array_map( [ __CLASS__, 'recovery_hash' ], $codes );
+        $state['last_counter'] = $counter;
+        self::save_totp_state( $uid, $state );
+        update_user_meta( $uid, 'and_toolkit_recovery_flash', self::encrypt_secret( implode( "\\n", $codes ) ) );
+        self::log_event( 'auth_security', 'info', sprintf( '2FA visszaállító kódok újragenerálva: %s', $user->user_login ), $user->user_login, $actor );
+    }
+
+    public static function render_2fa_required_notice(): void {
+        $user = wp_get_current_user();
+        if ( ! $user instanceof \\WP_User || ! $user->exists() ) {
+            return;
+        }
+        $policy = self::evaluate_user_auth_policy( $user );
+        if ( ! empty( $policy['bypassed'] ) || 'required' !== $policy['totp'] || self::totp_state( (int) $user->ID )['enabled'] ) {
+            return;
+        }
+        echo '<div class="notice notice-warning"><p>' . esc_html__( 'A szerepköréhez a 2FA kötelező.', 'and-toolkit' ) . ' <a href="' . esc_url( admin_url( 'profile.php#atk-2fa-code' ) ) . '">' . esc_html__( 'Kapcsolja be a profiljában.', 'and-toolkit' ) . '</a></p></div>';
     }
 
     public static function render_auth_manager_shortcode( $atts = [] ): string {
         $auth = self::get_config()['auth'];
-        if ( ! $auth['enabled'] ) {
+        if ( ! $auth['enabled'] || ! $auth['totp_enabled'] ) {
             return '';
         }
-        $offset = (int) ( $auth['manual_time_offset_sec'] ?? 0 );
-        return sprintf(
-            '<section class="atk-widget atk-auth-manager" data-shortcode="wtk_auth_manager" data-totp="%s" data-passkey="%s" data-email="%s" data-offline="%s" data-time-offset="%d"><h3>Hitelesítés &amp; Saját Biztonsági Központ</h3><p>Válassza ki és kezelje az Ön által használt hitelesítő szolgáltatásokat (2FA TOTP, Passkey, E-mail kód, Offline vészkódok és készülék-időszinkron) wp-admin belépés nélkül.</p></section>',
-            esc_attr( ! empty( $auth['totp_enabled'] ) ? 'on' : 'off' ),
-            esc_attr( ! empty( $auth['passkey_enabled'] ) ? 'on' : 'off' ),
-            esc_attr( ! empty( $auth['email_auth_enabled'] ) ? 'on' : 'off' ),
-            esc_attr( ! empty( $auth['offline_passwords_enabled'] ) ? 'on' : 'off' ),
-            $offset
-        );
+        $html = '<section class="atk-widget atk-auth-manager"><h3>' . esc_html__( 'Hitelesítés és saját biztonsági központ', 'and-toolkit' ) . '</h3>';
+        if ( ! is_user_logged_in() ) {
+            return $html . '<p><a href="' . esc_url( wp_login_url() ) . '">' . esc_html__( 'Jelentkezzen be a 2FA kezeléséhez.', 'and-toolkit' ) . '</a></p></section>';
+        }
+        $enabled = self::totp_state( get_current_user_id() )['enabled'];
+        return $html . '<p>' . esc_html( $enabled ? 'A 2FA aktív a fiókján.' : 'A 2FA nincs bekapcsolva a fiókján.' ) . '</p><p><a class="atk-btn" href="' . esc_url( get_edit_profile_url() . '#atk-2fa-code' ) . '">' . esc_html__( '2FA kezelése a profilban', 'and-toolkit' ) . '</a></p></section>';
     }
 
     // ========================================================================
-    // 11. WP REJTÉS & MESTERJELSZÓ VÉDELEM MODUL (v0.7.0)
+    // 11. WP REJTÉS & HOZZÁFÉRÉSI KAPUK: verzió-elrejtés, felderítés-tiltás, maszkolás,
+    //     csak tagoknak mód, mesterjelszó kapu, belépő űrlap és AJAX buborék
+    //     (URL-átírás és a wp-login.php áthelyezése még nincs a PHP-ban – csak a Studio előnézetében.)
     // ========================================================================
 
-    public static function decrypt_master_password_for_admin(): string {
-        if ( ! current_user_can( 'manage_options' ) ) {
-            return '';
+    public static function apply_wp_hide(): void {
+        $hide = self::get_config()['wp_hide'];
+        if ( empty( $hide['enabled'] ) ) {
+            return;
         }
-        $cipher = (string) ( self::get_config()['wp_hide']['master_password_cipher'] ?? '' );
-        if ( ! str_starts_with( $cipher, 'ATKENC1:' ) ) {
-            return '';
+        if ( ! empty( $hide['strip_wp_version'] ) ) {
+            remove_action( 'wp_head', 'wp_generator' );
+            add_filter( 'the_generator', '__return_empty_string' );
+            add_filter( 'style_loader_src', [ __CLASS__, 'strip_version_query' ], 20 );
+            add_filter( 'script_loader_src', [ __CLASS__, 'strip_version_query' ], 20 );
         }
-        $parts = explode( ':', substr( $cipher, 8 ), 2 );
-        $hex   = $parts[1] ?? '';
-        $key   = 'AND_TOOLKIT_MASTER_KEY_V070';
-        $out   = '';
-        for ( $i = 0, $len = strlen( $hex ); $i < $len; $i += 2 ) {
-            $byte = hexdec( substr( $hex, $i, 2 ) );
-            $out .= chr( $byte ^ ord( $key[ (int) ( $i / 2 ) % strlen( $key ) ] ) );
+        if ( ! empty( $hide['block_author_scanning'] ) ) {
+            add_filter( 'rest_endpoints', [ __CLASS__, 'filter_rest_endpoints' ] );
         }
-        return $out;
+    }
+
+    public static function strip_version_query( $src ) {
+        global $wp_version;
+        if ( is_string( $src ) && str_contains( $src, 'ver=' . $wp_version ) ) {
+            return remove_query_arg( 'ver', $src );
+        }
+        return $src;
+    }
+
+    public static function filter_rest_endpoints( $endpoints ) {
+        if ( ! is_array( $endpoints ) || is_user_logged_in() ) {
+            return $endpoints;
+        }
+        foreach ( array_keys( $endpoints ) as $route ) {
+            if ( 1 === preg_match( '#^/wp/v2/users#', (string) $route ) ) {
+                unset( $endpoints[ $route ] );
+            }
+        }
+        return $endpoints;
+    }
+
+    private static function gate_token( string $hash, int $expires ): string {
+        return $expires . '|' . hash_hmac( 'sha256', $expires . '|' . $hash, wp_salt( 'auth' ) );
+    }
+
+    private static function master_gate_active(): bool {
+        $hide = self::get_config()['wp_hide'];
+        return ! empty( $hide['enabled'] ) && ! empty( $hide['master_password_enabled'] ) && '' !== (string) $hide['master_password_hash'];
+    }
+
+    private static function master_gate_passed(): bool {
+        $hide = self::get_config()['wp_hide'];
+        if ( self::ip_in_whitelist( self::client_ip(), (array) $hide['master_password_whitelisted_ips'] ) ) {
+            return true;
+        }
+        $cookie = isset( $_COOKIE['atk_master_gate'] ) ? sanitize_text_field( wp_unslash( (string) $_COOKIE['atk_master_gate'] ) ) : '';
+        $parts  = explode( '|', $cookie, 2 );
+        $exp    = (int) $parts[0];
+        return $exp > time() && hash_equals( self::gate_token( (string) $hide['master_password_hash'], $exp ), $cookie );
+    }
+
+    private static function current_request_url(): string {
+        $uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '/'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+        if ( ! str_starts_with( $uri, '/' ) || str_starts_with( $uri, '//' ) ) {
+            $uri = '/';
+        }
+        $origin = (string) preg_replace( '#^(https?://[^/]+).*$#', '$1', home_url( '/' ) );
+        return $origin . $uri;
+    }
+
+    private static function send_lock_page( int $status, string $title, string $body_html ): void {
+        status_header( $status );
+        nocache_headers();
+        header( 'X-Robots-Tag: noindex, nofollow' );
+        header( 'Content-Type: text/html; charset=utf-8' );
+        echo '<!DOCTYPE html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>' . esc_html( $title ) . '</title><style>body{font:16px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#f6f7f9;color:#1f2328}main{background:#fff;padding:2rem;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.12);max-width:420px;width:calc(100% - 2rem)}input,button{font:inherit;padding:.55rem .7rem;margin:.3rem 0;width:100%;box-sizing:border-box}button{background:#2563eb;color:#fff;border:0;border-radius:8px;cursor:pointer}.err{color:#b42318}</style></head><body><main><h1>' . esc_html( $title ) . '</h1>' . $body_html . '</main></body></html>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a $body_html hívóoldalon escape-elt
+        exit;
+    }
+
+    private static function handle_master_gate( string $hash ): void {
+        $error = '';
+        if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) && isset( $_POST['atk_master_pw'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+            $fail_key = 'atk_gate_fail_' . substr( hash_hmac( 'sha256', self::client_ip() . '|' . self::client_user_agent(), wp_salt() ), 0, 20 );
+            if ( (int) get_transient( $fail_key ) >= 5 ) {
+                self::send_lock_page( 429, 'Védett weboldal', '<p class="err">' . esc_html__( 'Túl sok próbálkozás. Várjon 10 percet.', 'and-toolkit' ) . '</p>' );
+            }
+            if ( wp_check_password( (string) wp_unslash( $_POST['atk_master_pw'] ), $hash ) ) { // phpcs:ignore WordPress.Security.NonceVerification,WordPress.Security.ValidatedSanitizedInput
+                $expires = time() + 12 * HOUR_IN_SECONDS;
+                setcookie( 'atk_master_gate', self::gate_token( $hash, $expires ), [ 'expires' => $expires, 'path' => '/', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax' ] );
+                delete_transient( $fail_key );
+                wp_safe_redirect( self::current_request_url() );
+                exit;
+            }
+            set_transient( $fail_key, (int) get_transient( $fail_key ) + 1, 10 * MINUTE_IN_SECONDS );
+            $error = '<p class="err">' . esc_html__( 'Hibás jelszó.', 'and-toolkit' ) . '</p>';
+        }
+        self::send_lock_page(
+            403,
+            'Védett weboldal',
+            $error . '<form method="post" action=""><label>' . esc_html__( 'Mesterjelszó', 'and-toolkit' ) . '<input type="password" name="atk_master_pw" required autofocus autocomplete="current-password"></label><button type="submit">' . esc_html__( 'Belépés', 'and-toolkit' ) . '</button></form>'
+        );
     }
 
     public static function enforce_wp_hide_access_gate(): void {
@@ -2538,88 +2972,158 @@ JS;
         if ( empty( $hide['enabled'] ) || is_admin() ) {
             return;
         }
-        if ( ! empty( $hide['disable_author_archives'] ) && is_author() ) {
-            status_header( 404 );
-            nocache_headers();
-            exit;
+        if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) {
+            return; // az adminisztrátor sosem zárható ki
         }
-        $ip = self::client_ip();
-        if ( ! empty( $hide['master_password_enabled'] ) && ! self::ip_in_whitelist( $ip, (array) ( $hide['master_password_whitelisted_ips'] ?? [] ) ) ) {
-            $cookie_hash = isset( $_COOKIE['atk_master_gate'] ) ? sanitize_text_field( wp_unslash( (string) $_COOKIE['atk_master_gate'] ) ) : '';
-            if ( '' === $cookie_hash || ! hash_equals( (string) ( $hide['master_password_hash'] ?? '' ), $cookie_hash ) ) {
-                status_header( 403 );
-                nocache_headers();
-                echo '<!DOCTYPE html><html lang="hu"><head><meta charset="utf-8"><title>Mesterjelszó Védelem</title></head><body class="atk-master-gate-locked"><main><h1>Védett Weboldal – Mesterjelszó szükséges</h1></main></body></html>';
-                exit;
-            }
+        if ( self::master_gate_active() && ! self::master_gate_passed() ) {
+            self::handle_master_gate( (string) $hide['master_password_hash'] );
         }
         if ( ! empty( $hide['members_only_mode'] ) && ! is_user_logged_in() ) {
-            if ( ! empty( $hide['strip_html_source_for_guests'] ) ) {
-                status_header( 401 );
-                nocache_headers();
-                echo '<!DOCTYPE html><html lang="hu"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>' . esc_html( (string) $hide['members_only_overlay_headline'] ) . '</title></head><body class="atk-members-only-gate"><div class="atk-lock-overlay"><h1>' . esc_html( (string) $hide['members_only_overlay_headline'] ) . '</h1><p>' . esc_html( (string) $hide['members_only_overlay_subtext'] ) . '</p></div></body></html>';
-                exit;
-            }
+            self::send_lock_page(
+                401,
+                'Tartalom csak tagoknak',
+                '<p>' . esc_html__( 'A weboldal tartalma csak bejelentkezett látogatóknak érhető el.', 'and-toolkit' ) . '</p><p><a href="' . esc_url( wp_login_url( self::current_request_url() ) ) . '">' . esc_html__( 'Bejelentkezés', 'and-toolkit' ) . '</a></p>'
+            );
+        }
+        if ( ! empty( $hide['block_author_scanning'] ) && ! is_user_logged_in() && ( isset( $_GET['author'] ) || is_author() ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+            global $wp_query;
+            remove_action( 'template_redirect', 'redirect_canonical' );
+            $wp_query->set_404();
+            status_header( 404 );
+            nocache_headers();
         }
     }
 
-    public static function filter_masked_author_name( $name ): string {
-        $hide = self::get_config()['wp_hide'];
-        if ( ! empty( $hide['enabled'] ) && ! empty( $hide['hide_usernames_and_emails'] ) && ! current_user_can( 'manage_options' ) ) {
-            return (string) ( $hide['masked_author_fallback'] ?: 'Szerkesztőség' );
+    private static function current_rest_route(): string {
+        $route = isset( $_GET['rest_route'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['rest_route'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+        if ( '' === $route && isset( $_SERVER['REQUEST_URI'] ) ) {
+            $path   = (string) wp_parse_url( (string) wp_unslash( $_SERVER['REQUEST_URI'] ), PHP_URL_PATH ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+            $prefix = '/' . rest_get_url_prefix() . '/';
+            $pos    = strpos( $path, $prefix );
+            $route  = false === $pos ? '' : substr( $path, $pos + strlen( $prefix ) - 1 );
         }
-        return (string) $name;
+        return '/' . trim( $route, '/' );
     }
 
-    public static function filter_masked_comment_author( $author, $comment_id = 0, $comment = null ): string {
-        $hide = self::get_config()['wp_hide'];
-        if ( ! empty( $hide['enabled'] ) && ! empty( $hide['hide_usernames_and_emails'] ) && ! current_user_can( 'manage_options' ) ) {
-            $clean = preg_replace( '/[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}/', '[e-mail rejtve]', (string) $author );
-            return 'Vendég #' . substr( md5( (string) $clean ), 0, 4 );
+    /**
+     * Csak tagoknak / mesterjelszó módban a REST API (pl. a keresés) sem ad tartalmat vendégeknek.
+     */
+    public static function filter_rest_access( $result ) {
+        if ( ! empty( $result ) || is_user_logged_in() ) {
+            return $result;
         }
-        return (string) $author;
+        $hide = self::get_config()['wp_hide'];
+        if ( empty( $hide['enabled'] ) ) {
+            return $result;
+        }
+        $locked = ( self::master_gate_active() && ! self::master_gate_passed() ) || ! empty( $hide['members_only_mode'] );
+        if ( ! $locked || in_array( self::current_rest_route(), [ '/' . self::REST_NS . '/cookie-consent', '/' . self::REST_NS . '/track-visit' ], true ) ) {
+            return $result;
+        }
+        return new \\WP_Error( 'and_toolkit_site_locked', __( 'A webhely tartalma zárolt.', 'and-toolkit' ), [ 'status' => 401 ] );
+    }
+
+    private static function alias_for( int $user_id ): string {
+        $pattern = (string) self::get_config()['wp_hide']['author_alias'];
+        $pattern = '' !== $pattern ? $pattern : 'Szerkesztőség';
+        return str_replace( 'ID', (string) $user_id, $pattern );
+    }
+
+    private static function masking_active(): bool {
+        $hide = self::get_config()['wp_hide'];
+        return ! empty( $hide['enabled'] ) && ! empty( $hide['hide_usernames_emails'] ) && ! is_admin() && ! current_user_can( 'manage_options' );
+    }
+
+    public static function filter_masked_author_name( $name, $user_id = 0 ) {
+        if ( ! self::masking_active() ) {
+            return $name;
+        }
+        return self::alias_for( (int) ( $user_id ?: get_the_author_meta( 'ID' ) ) );
+    }
+
+    public static function filter_masked_comment_author( $author, $comment_id = 0, $comment = null ) {
+        if ( ! self::masking_active() ) {
+            return $author;
+        }
+        $member = $comment instanceof \\WP_Comment && (int) $comment->user_id > 0;
+        if ( $member || str_contains( (string) $author, '@' ) ) {
+            return self::alias_for( $member ? (int) $comment->user_id : 0 );
+        }
+        return $author; // a névtelen látogatók megadott neve nem azonosító adat, érintetlen marad
+    }
+
+    private static function login_form_html( string $form_id ): string {
+        ob_start();
+        self::render_captcha_field();
+        $captcha = (string) ob_get_clean();
+        $middle  = $captcha . self::totp_field_html();
+        $filter  = static fn( $content ) => (string) $content . $middle;
+        add_filter( 'login_form_middle', $filter );
+        $html = (string) wp_login_form( [ 'echo' => false, 'form_id' => $form_id, 'redirect' => self::current_request_url(), 'remember' => true ] );
+        remove_filter( 'login_form_middle', $filter );
+        return $html;
+    }
+
+    private static function enqueue_login_form_captcha(): void {
+        if ( self::get_config()['captcha']['protect_login'] && ! self::captcha_should_bypass() ) {
+            self::enqueue_captcha_provider_script();
+        }
     }
 
     public static function render_custom_login_shortcode( $atts = [] ): string {
         $hide = self::get_config()['wp_hide'];
-        if ( empty( $hide['enabled'] ) || empty( $hide['login_shortcode_enabled'] ) ) {
+        if ( empty( $hide['enabled'] ) || empty( $hide['enable_login_shortcode'] ) ) {
             return '';
         }
-        return sprintf(
-            '<section class="atk-widget atk-custom-login" data-shortcode="wtk_custom_login" data-slug="%s"><h3>Védett Bejelentkezés</h3></section>',
-            esc_attr( (string) $hide['custom_login_slug'] )
-        );
+        $html = '<section class="atk-widget atk-custom-login"><h3>' . esc_html__( 'Bejelentkezés', 'and-toolkit' ) . '</h3>';
+        if ( is_user_logged_in() ) {
+            return $html . '<p>' . esc_html( sprintf( 'Bejelentkezve: %s', wp_get_current_user()->display_name ) ) . ' · <a href="' . esc_url( wp_logout_url( self::current_request_url() ) ) . '">' . esc_html__( 'Kijelentkezés', 'and-toolkit' ) . '</a></p></section>';
+        }
+        self::enqueue_login_form_captcha();
+        return $html . self::login_form_html( 'atk-login-form' ) . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_login_form() kimenete
     }
 
     public static function render_ajax_bubble_login_widget(): void {
         $hide = self::get_config()['wp_hide'];
-        if ( empty( $hide['enabled'] ) || empty( $hide['ajax_bubble_login_enabled'] ) || is_user_logged_in() ) {
+        if ( empty( $hide['enabled'] ) || empty( $hide['enable_ajax_bubble_login'] ) || is_user_logged_in() ) {
             return;
         }
         printf(
-            '<aside class="atk-bubble-login" data-position="%s"><button type="button" class="atk-bubble-trigger">%s</button></aside>',
-            esc_attr( (string) $hide['bubble_position'] ),
-            esc_html( (string) $hide['bubble_label'] )
-        );
+            '<aside class="atk-bubble-login" data-position="%s"><button type="button" class="atk-bubble-trigger" aria-expanded="false">%s</button><div class="atk-bubble-panel atk-hidden">%s</div></aside>',
+            esc_attr( self::pick( (string) $hide['bubble_position'], [ 'bottom-right', 'bottom-left' ], 'bottom-right' ) ),
+            esc_html( (string) $hide['bubble_button_label'] ),
+            self::login_form_html( 'atk-bubble-form' ) // wp_login_form() kimenete
+        ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     public static function handle_ajax_bubble_login(): void {
-        if ( ! self::rate_limit( 'bubble_login', 3 ) ) {
-            wp_send_json_error( [ 'message' => 'Túl sok bejelentkezési kísérlet.' ], 429 );
+        $hide = self::get_config()['wp_hide'];
+        if ( empty( $hide['enabled'] ) || empty( $hide['enable_ajax_bubble_login'] ) ) {
+            wp_send_json_error( [ 'message' => 'A gyors belépés le van tiltva.' ], 403 );
         }
-        $creds = [
-            'user_login'    => isset( $_POST['log'] ) ? sanitize_user( wp_unslash( (string) $_POST['log'] ) ) : '', // phpcs:ignore WordPress.Security.NonceVerification
-            'user_password' => isset( $_POST['pwd'] ) ? (string) wp_unslash( $_POST['pwd'] ) : '', // phpcs:ignore WordPress.Security.NonceVerification
-            'remember'      => ! empty( $_POST['rememberme'] ), // phpcs:ignore WordPress.Security.NonceVerification
-        ];
-        $user  = wp_signon( $creds, is_ssl() );
+        if ( is_user_logged_in() ) {
+            wp_send_json_success( [ 'status' => 'already_logged_in' ] );
+        }
+        $login = isset( $_POST['log'] ) ? sanitize_user( wp_unslash( (string) $_POST['log'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+        if ( ! self::rate_limit( 'bubble', 2, $login ) ) {
+            wp_send_json_error( [ 'message' => 'Túl sok bejelentkezési kísérlet, várjon egy kicsit.' ], 429 );
+        }
+        $user = wp_signon(
+            [
+                'user_login'    => $login,
+                'user_password' => isset( $_POST['pwd'] ) ? (string) wp_unslash( $_POST['pwd'] ) : '', // phpcs:ignore WordPress.Security.NonceVerification,WordPress.Security.ValidatedSanitizedInput
+                'remember'      => ! empty( $_POST['rememberme'] ), // phpcs:ignore WordPress.Security.NonceVerification
+            ],
+            is_ssl()
+        );
         if ( is_wp_error( $user ) ) {
-            wp_send_json_error( [ 'message' => 'Hibás belépési adatok.' ], 401 );
+            $passthrough = [ 'and_toolkit_totp_required', 'and_toolkit_totp_invalid', 'and_toolkit_totp_locked', 'and_toolkit_captcha_failed' ];
+            $message     = in_array( $user->get_error_code(), $passthrough, true ) ? wp_strip_all_tags( $user->get_error_message() ) : 'Hibás belépési adatok.';
+            wp_send_json_error( [ 'message' => $message ], 401 );
         }
-        wp_send_json_success( [ 'status' => 'logged_in', 'redirect' => home_url( '/' ) ] );
+        wp_send_json_success( [ 'status' => 'logged_in' ] );
     }
 }
 
 And_ToolKit_Plugin::init();
 `;
-

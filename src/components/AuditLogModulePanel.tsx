@@ -28,7 +28,7 @@ import {
   buildUpdateNotificationEmailPreview,
   filterAuditLogEntries,
   formatAuditLogsForExport,
-  shouldSendLoginEmailAlert,
+  shouldSendAuditEventEmail,
 } from '../utils/toolkitLogic';
 
 interface AuditLogModulePanelProps {
@@ -82,6 +82,11 @@ const CATEGORY_META: Record<
     label: 'WP Mag (Core) Frissítés',
     hook: '_core_updated_successfully',
     badgeClass: 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/70 border-rose-200 dark:border-rose-800',
+  },
+  filesystem_change: {
+    label: 'Fájlrendszer Változás',
+    hook: 'wp_filesystem / file_integrity_check',
+    badgeClass: 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/80 border-red-300 dark:border-red-800',
   },
 };
 
@@ -141,91 +146,110 @@ export const AuditLogModulePanel: React.FC<AuditLogModulePanelProps> = ({
     onUpdateConfig({ newDeviceTargetRoles: updated });
   };
 
-  const simulateEvent = (type: 'new-login' | 'plugin-update' | 'user-invite' | 'core-update') => {
+  const simulateEvent = (
+    type: 'new-login' | 'plugin-update' | 'user-invite' | 'core-update' | 'filesystem-change'
+  ) => {
     const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
     if (type === 'new-login') {
-      const check = shouldSendLoginEmailAlert(config, 'editor', true);
-      onAppendLogEntry(
-        {
-          id: `log-${Date.now()}`,
-          timestamp: nowStr,
-          category: 'user_login',
-          actionLabel: 'Bejelentkezés (Új helyről & eszközről)',
-          actorUser: 'szabo.dora',
-          actorRole: 'editor',
-          targetObject: 'wp-login.php (Új IP & Böngésző)',
-          details: `Szerkesztői belépés új helyről (Bécs, AT) és új eszközről.${
-            check.send ? ` E-mail riasztás kiküldve (${check.reason}).` : ''
-          }`,
-          ipLocation: '193.170.14.88 (Bécs, AT)',
-          deviceBrowser: 'iPadOS 18 · Mobile Safari (Új eszköz)',
-          isNewDeviceOrLocation: true,
-          severity: 'warning',
-        },
-        check.send
-      );
+      const candidate: AuditLogEntry = {
+        id: `log-${Date.now()}`,
+        timestamp: nowStr,
+        category: 'user_login',
+        actionLabel: 'Bejelentkezés (Új helyről & eszközről)',
+        actorUser: 'szabo.dora',
+        actorRole: 'editor',
+        targetObject: 'wp-login.php (Új IP & Böngésző)',
+        details: '',
+        ipLocation: '193.170.14.88 (Bécs, AT)',
+        deviceBrowser: 'iPadOS 18 · Mobile Safari (Új eszköz)',
+        isNewDeviceOrLocation: true,
+        severity: 'warning',
+      };
+      const emailDecision = shouldSendAuditEventEmail(config, candidate);
+      candidate.details = `Szerkesztői belépés új helyről (Bécs, AT) és új eszközről. [${emailDecision.reason}]`;
+      onAppendLogEntry(candidate, emailDecision.send);
       return;
     }
 
     if (type === 'plugin-update') {
-      onAppendLogEntry(
-        {
-          id: `log-${Date.now()}`,
-          timestamp: nowStr,
-          category: 'plugin_lifecycle',
-          actionLabel: 'Plugin Frissítés (v9.3.1 → v9.4.0)',
-          actorUser: 'galandras12',
-          actorRole: 'administrator',
-          targetObject: 'WooCommerce E-Commerce (9.3.1 → 9.4.0)',
-          details: 'Plugin sikeresen frissítve az admin felületen: 9.3.1 verzióról 9.4.0 verzióra.',
-          previousVersion: '9.3.1',
-          newVersion: '9.4.0',
-          ipLocation: '84.2.44.19 (Budapest, HU)',
-          severity: 'info',
-        },
-        config.updateAvailableEmailEnabled && config.notifyPluginUpdates
-      );
+      const candidate: AuditLogEntry = {
+        id: `log-${Date.now()}`,
+        timestamp: nowStr,
+        category: 'plugin_lifecycle',
+        actionLabel: 'Plugin Frissítés (v9.3.1 → v9.4.0)',
+        actorUser: 'galandras12',
+        actorRole: 'administrator',
+        targetObject: 'WooCommerce E-Commerce (9.3.1 → 9.4.0)',
+        details: '',
+        previousVersion: '9.3.1',
+        newVersion: '9.4.0',
+        ipLocation: '84.2.44.19 (Budapest, HU)',
+        severity: 'info',
+      };
+      const emailDecision = shouldSendAuditEventEmail(config, candidate);
+      candidate.details = `Plugin sikeresen frissítve az admin felületen: 9.3.1 → 9.4.0. [${emailDecision.reason}]`;
+      onAppendLogEntry(candidate, emailDecision.send);
       return;
     }
 
     if (type === 'user-invite') {
-      onAppendLogEntry(
-        {
-          id: `log-${Date.now()}`,
-          timestamp: nowStr,
-          category: 'user_lifecycle',
-          actionLabel: 'Felhasználó Létrehozva (Regisztrációs Űrlap)',
-          actorUser: 'horvath.peter',
-          actorRole: 'subscriber',
-          targetObject: 'horvath.peter (Feliratkozó)',
-          details: 'Új felhasználó regisztrált a nyilvános WordPress regisztrációs űrlap használatával (Mód: registration-form).',
-          userCreationMethod: 'registration-form',
-          ipLocation: '81.182.40.12 (Győr, HU)',
-          severity: 'info',
-        },
-        false
-      );
+      const candidate: AuditLogEntry = {
+        id: `log-${Date.now()}`,
+        timestamp: nowStr,
+        category: 'user_lifecycle',
+        actionLabel: 'Felhasználó Létrehozva (Regisztrációs Űrlap)',
+        actorUser: 'horvath.peter',
+        actorRole: 'subscriber',
+        targetObject: 'horvath.peter (Feliratkozó)',
+        details:
+          'Új felhasználó regisztrált a nyilvános WordPress regisztrációs űrlap használatával (Mód: registration-form).',
+        userCreationMethod: 'registration-form',
+        ipLocation: '81.182.40.12 (Győr, HU)',
+        severity: 'info',
+      };
+      const emailDecision = shouldSendAuditEventEmail(config, candidate);
+      onAppendLogEntry(candidate, emailDecision.send);
+      return;
+    }
+
+    if (type === 'filesystem-change') {
+      const candidate: AuditLogEntry = {
+        id: `log-${Date.now()}`,
+        timestamp: nowStr,
+        category: 'filesystem_change',
+        actionLabel: 'Fájlrendszer Változás Észlelve (Kritikus)',
+        actorUser: 'galandras12',
+        actorRole: 'administrator',
+        targetObject: 'wp-config.php & .htaccess (Fájl-integritás riasztás)',
+        details: '',
+        ipLocation: '84.2.44.19 (Budapest, HU)',
+        deviceBrowser: 'WP File Integrity Scanner',
+        severity: 'critical',
+      };
+      const emailDecision = shouldSendAuditEventEmail(config, candidate);
+      candidate.details = `Magas kockázatú fájlrendszer-módosítás észlelve a gyökérkönyvtárban. [${emailDecision.reason}]`;
+      onAppendLogEntry(candidate, emailDecision.send);
       return;
     }
 
     // core-update
-    onAppendLogEntry(
-      {
-        id: `log-${Date.now()}`,
-        timestamp: nowStr,
-        category: 'core_manual_update',
-        actionLabel: 'WordPress Mag (Core) Frissítés',
-        actorUser: 'galandras12',
-        actorRole: 'administrator',
-        targetObject: 'WordPress Core (7.1.0 → 7.1.1-security)',
-        details: 'WordPress mag biztonsági frissítés elindítva és befejezve (Indította: galandras12).',
-        previousVersion: '7.1.0',
-        newVersion: '7.1.1-security',
-        ipLocation: '84.2.44.19 (Budapest, HU)',
-        severity: 'critical',
-      },
-      config.updateAvailableEmailEnabled && config.notifyCoreUpdates
-    );
+    const candidate: AuditLogEntry = {
+      id: `log-${Date.now()}`,
+      timestamp: nowStr,
+      category: 'core_manual_update',
+      actionLabel: 'WordPress Mag (Core) Frissítés',
+      actorUser: 'galandras12',
+      actorRole: 'administrator',
+      targetObject: 'WordPress Core (7.1.0 → 7.1.1-security)',
+      details: '',
+      previousVersion: '7.1.0',
+      newVersion: '7.1.1-security',
+      ipLocation: '84.2.44.19 (Budapest, HU)',
+      severity: 'critical',
+    };
+    const emailDecision = shouldSendAuditEventEmail(config, candidate);
+    candidate.details = `WordPress mag biztonsági frissítés elindítva és befejezve (Indította: galandras12). [${emailDecision.reason}]`;
+    onAppendLogEntry(candidate, emailDecision.send);
   };
 
   return (
@@ -234,10 +258,10 @@ export const AuditLogModulePanel: React.FC<AuditLogModulePanelProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-            08. Biztonsági Audit Naplózás &amp; E-mail Értesítés Modul (v0.5.0)
+            08. Biztonsági Audit Naplózás &amp; E-mail Értesítés Modul (v0.5.1)
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Teljes körű WordPress 7.1 eseménynapló (.log, .txt, .csv mentéssel), bejelentkezési riasztásokkal és verziókövető e-mail értesítőkkel.
+            Teljes körű WordPress 7.1 eseménynapló (.log, .txt, .csv mentéssel), Critical Only szűrővel, bejelentkezési riasztásokkal és verziókövető e-mailekkel.
           </p>
         </div>
 
@@ -347,6 +371,13 @@ export const AuditLogModulePanel: React.FC<AuditLogModulePanelProps> = ({
             >
               + WP Mag (Core) frissítés
             </button>
+            <button
+              type="button"
+              onClick={() => simulateEvent('filesystem-change')}
+              className="px-2.5 py-1 rounded bg-rose-950/90 hover:bg-rose-900 text-rose-200 border border-rose-700 font-semibold cursor-pointer"
+            >
+              + Fájlrendszer változás (Critical)
+            </button>
           </div>
         </div>
       </div>
@@ -429,13 +460,13 @@ export const AuditLogModulePanel: React.FC<AuditLogModulePanelProps> = ({
         </div>
       </section>
 
-      {/* SECTION 2: Email Notification Settings (Login Scope + New Device/Location) */}
+      {/* SECTION 2: Email Notification Settings (Critical Only Toggle + Login Scope + New Device/Location) */}
       <section className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <UserCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-              2. Bejelentkezési és Új Hely / Új Eszköz E-mail Értesítések
+              2. E-mail Értesítési Szűrők, Critical Only Mód &amp; Bejelentkezési Riasztások
             </h3>
           </div>
           <div className="flex items-center gap-2 text-xs">
@@ -447,6 +478,51 @@ export const AuditLogModulePanel: React.FC<AuditLogModulePanelProps> = ({
               aria-label="Értesítési e-mail cím"
               className="px-2.5 py-1 text-xs font-mono rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100"
             />
+          </div>
+        </div>
+
+        {/* v0.5.1: 'Critical Only' High-Impact Email Notification Filter Toggle */}
+        <div
+          className={`p-3.5 rounded-lg border transition-colors ${
+            config.criticalOnlyEmails
+              ? 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800'
+              : 'bg-slate-50 dark:bg-slate-950 border-slate-200/80 dark:border-slate-800'
+          }`}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <ShieldAlert
+                  className={`w-4 h-4 shrink-0 ${
+                    config.criticalOnlyEmails
+                      ? 'text-rose-600 dark:text-rose-400'
+                      : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                />
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                  Critical Only (Csak Kritikus Események E-mail Riasztása · v0.5.1)
+                </span>
+                {config.criticalOnlyEmails && (
+                  <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase rounded bg-rose-600 text-white">
+                    CRITICAL ONLY AKTÍV
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                Bekapcsolt állapotban az e-mail értesítő szűri a riasztásokat, és <strong>kizárólag a magas hatású (high-impact) eseményekről</strong> küld e-mailt — mint a <strong>WordPress Mag (Core) frissítések</strong> vagy a <strong>fájlrendszer-változások (`wp-config.php`, bővítmény/sablon fájl integritás)</strong>. Minden egyéb esemény továbbra is rögzül a naplóban.
+              </p>
+            </div>
+
+            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-slate-100 cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                aria-label="Critical Only (Csak Kritikus) e-mail értesítés szűrő"
+                checked={config.criticalOnlyEmails}
+                onChange={(e) => onUpdateConfig({ criticalOnlyEmails: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 text-rose-600"
+              />
+              <span>Critical Only</span>
+            </label>
           </div>
         </div>
 

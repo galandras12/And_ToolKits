@@ -273,7 +273,8 @@ export type AuditEventCategory =
   | 'page_lifecycle'
   | 'user_lifecycle'
   | 'auto_system_update'
-  | 'core_manual_update';
+  | 'core_manual_update'
+  | 'filesystem_change';
 
 export type WpUserRole =
   | 'administrator'
@@ -325,6 +326,8 @@ export interface AuditLogConfig {
   enabled: boolean;
   showSidebarAuditWidget: boolean;
   recipientEmail: string;
+  // v0.5.1: 'Critical Only' email filter toggle (high-impact events: core WP updates or file system changes)
+  criticalOnlyEmails: boolean;
   // Granular logging switches for all 8 required audit categories
   logUserLogins: boolean;
   logPluginChanges: boolean;

@@ -4,7 +4,7 @@
 
 ### Moduláris Oldalsáv Widgetek · Élő AJAX Kereső · Közösségi Megosztó · Analitika · EU GDPR Cookie · Állandó Információs Banner · Kép/Upload/Lazy-Load Optimalizáló · Biztonsági Audit Napló & E-mail Értesítő
 
-![Version](https://img.shields.io/badge/Verzi%C3%B3-0.5.0-2563EB?style=for-the-badge&logo=semanticrelease&logoColor=white)
+![Version](https://img.shields.io/badge/Verzi%C3%B3-0.5.1-2563EB?style=for-the-badge&logo=semanticrelease&logoColor=white)
 ![WordPress](https://img.shields.io/badge/WordPress-7.1%20Ready-21759B?style=for-the-badge&logo=wordpress&logoColor=white)
 ![PHP](https://img.shields.io/badge/PHP-8.0%2B%20Strict-777BB4?style=for-the-badge&logo=php&logoColor=white)
 ![GDPR](https://img.shields.io/badge/EU%20GDPR-Consent%20Mode%20v2-10B981?style=for-the-badge&logo=shield&logoColor=white)
@@ -21,22 +21,22 @@
 
 ## ✨ Miért az And ToolKit?
 
-| Jellemző | Hagyományos WordPress Bővítmények (8 külön plugin) | **🔧 `&` And ToolKit (`v0.5.0`)** |
+| Jellemző | Hagyományos WordPress Bővítmények (8 külön plugin) | **🔧 `&` And ToolKit (`v0.5.1`)** |
 | :--- | :--- | :--- |
 | **Függőségek** | jQuery + nehéz külső ikonfontok (`180+ KB`) | **Zero-jQuery · Beágyazott SVG (`~13.0 KB`)** |
 | **Adminisztráció** | 8 különálló, eltérő stílusú beállítóoldal | **Egységes Studio Vezérlőpult + Élő Oldalsáv Előnézet** |
 | **Kép & Sebesség** | Fizetős külső API kvóták + bonyolult `php.ini` | **Beépített WebP/AVIF konverter, `upload_size_limit` felülbírálás, Lazy Load & Cache** |
-| **Biztonsági Napló** | Nehéz adatbázis-terhelő biztonsági csomagok | **8-kategóriás Audit Napló (`.log`, `.txt`, `.csv` mentés) + Okos E-mail Riasztók** |
+| **Biztonsági Napló** | Nehéz adatbázis-terhelő biztonsági csomagok | **8-kategóriás Audit Napló (`.log`, `.txt`, `.csv`) + Critical Only E-mail Riasztó** |
 | **Téma támogatás** | Csak világos vagy sablonfüggő | **Natív Világos & Sötét mód (`Dark / Light`)** |
 | **PHP & WP Szabvány** | Vegyes örökölt kód | **`declare(strict_types=1)` · PHP 8.0 `match` · WP 7.1 `defer`** |
 
 ---
 
-## 🧩 A 8 Fő Modul Felépítése (`v0.5.0`)
+## 🧩 A 8 Fő Modul Felépítése (`v0.5.1`)
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                     🔧 [&] And ToolKit v0.5.0 Mag (PHP 8.0+)                 │
+│                     🔧 [&] And ToolKit v0.5.1 Mag (PHP 8.0+)                 │
 ├───────────────────────┬──────────────────────────┬───────────────────────────┤
 │ 01. Esemény Naptár    │ 02. Élő AJAX Kereső      │ 03. Közösségi Megosztás   │
 │   [wtk_calendar]      │     [wtk_search]         │      [wtk_social]         │
@@ -96,8 +96,9 @@
 - **Kézi Interaktív Gomb & Automatikus Ütemezés**: 1-kattintásos optimalizálás és sebességmérés (`PageSpeed 99/100`, `TTFB 38ms`, `LCP 690ms`) vagy automatikus WP-Cron ütemezés.
 - **Képtömörítés, WebP/AVIF Konvertálás, Átméretezés & Upload Limit Felülbírálás**: A WordPress `8 MB`-os feltöltési korlátjának felülbírálása akár **`1024 MB`-ig (`upload_size_limit`)** és teljeskörű Lazy Loading.
 
-### 🔐 `08.` Biztonsági Audit Naplózás & E-mail Értesítés Modul (`[wtk_security_badge]`) — *ÚJ a v0.5.0-ban!*
-- **8 Teljes Körűen Naplózott Eseménykategória**:
+### 🔐 `08.` Biztonsági Audit Naplózás & E-mail Értesítés Modul (`[wtk_security_badge]`) — *v0.5.0 & v0.5.1*
+- **Critical Only (Csak Kritikus) E-mail Szűrő (`v0.5.1`)**: Egyetlen kapcsolóval aktiválható mód, amely az e-mail értesítéseket kizárólag a **magas hatású (high-impact) eseményekre** korlátozza, mint a **WordPress Mag (Core) frissítések** és a **fájlrendszer-változások (`wp-config.php`, bővítmény/sablon integritás)**.
+- **8+1 Teljes Körűen Naplózott Eseménykategória**:
   1. **Felhasználói bejelentkezések (`wp_login`)**: Melyik felhasználó mikor, milyen IP-címről/helyről és eszközről jelentkezett be.
   2. **Plugin műveletek (`upgrader_process_complete`, `deleted_plugin`)**: Mikor telepít, frissít vagy töröl egy bővítményt.
   3. **Téma műveletek (`upgrader_process_complete`, `switch_theme`)**: Mikor telepít, frissít vagy töröl egy WordPress sablont.
@@ -105,7 +106,7 @@
   5. **Oldal (Page) műveletek (`save_post_page`, `before_delete_post`)**: Melyik felhasználó mikor hoz létre, szerkeszt át vagy töröl egy oldalt.
   6. **Felhasználói életciklus és létrehozás módja (`user_register`, `set_user_role`, `delete_user`)**: Rögzíti, mikor hoznak létre felhasználót és **milyen módon** (*nyilvános regisztrációs űrlap*, *másik felhasználó meghívója* vagy *admin felületen létrehozás*), mikor helyezik át másik felhasználói csoportba, illetve mikor törölnek felhasználót.
   7. **Automatizált rendszerfrissítések (`automatic_updates_complete`)**: Mikor végez az automatizált háttérfrissítéssel a WordPress rendszere.
-  8. **WordPress mag (Core) frissítések (`_core_updated_successfully`)**: Mikor és **ki indította el** a WordPress alaprendszer frissítését.
+  8. **WordPress mag (Core) frissítések (`_core_updated_successfully`) & Fájlrendszer-integritás**: Mikor és **ki indította el** a WordPress alaprendszer frissítését, illetve történt-e kritikus fájlrendszer-változás.
 - **Naplófájl Mentése `.LOG`, `.TXT` vagy `.CSV` Formátumban**:
   - Egyetlen kattintással letölthető szabványos syslog **`.log`**, strukturált **`.txt`** vagy táblázatkezelő-kompatibilis **`.csv`** fájlba (`/wp-json/and-toolkit/v1/audit-export`).
 - **Opcionálisan Ki-Be Kapcsolható E-mail Értesítések**:
@@ -165,6 +166,7 @@ npx tsx --test src/utils/toolkitLogic.test.ts   # Egységtesztek és WP 7.1 / PH
 
 ## 📜 Verziótörténet (Changelog)
 
+- **`v0.5.1` (2026-11-03)** — **Critical Only (Csak Kritikus) E-mail Szűrő (`criticalOnlyEmails`)**: Új kapcsoló a Biztonsági Audit Napló beállításaiban, amely bekapcsolva kizárólag a magas kockázatú eseményekről (WordPress Mag frissítések vagy fájlrendszer-változások) küld e-mail riasztást.
 - **`v0.5.0` (2026-11-03)** — **Biztonsági Audit Naplózás & E-mail Értesítés Modul (`[wtk_security_badge]`)**: 8 eseménykategória naplózása (bejelentkezések, plugin/téma/poszt/oldal műveletek, felhasználó létrehozás módja / csoportváltás / törlés, automatizált rendszerfrissítés, WP mag frissítés), `.log` / `.txt` / `.csv` fájl exportálás, valamint ki-be kapcsolható szerepkör-alapú és új hely/eszköz belépési e-mailek, verziókövető frissítési értesítők és 24 órás napi összefoglaló.
 - **`v0.4.0` (2026-11-02)** — **Kép-, Upload Limit-, Lazy Load és Gyorsítótár Optimalizáló (`[wtk_speed_badge]`)** dedikált vezérlőfelület opcionális képtömörítéssel, WebP/AVIF konvertálással, átméretezéssel, a WordPress feltöltési korlát felülbírálásával (`upload_size_limit`), teljeskörű Lazy Loading kezeléssel és kézi interaktív / automatikus sebességoptimalizálással.
 - **`v0.3.0` (2026-11-02)** — **Állandó Főoldali / Globális Információs Banner (`[wtk_info_banner]`)** hozzáadása szín-, méret-, betűstílus- és animáció-testreszabással (`wp_body_open` & `is_front_page()`).

@@ -29,12 +29,12 @@ export const INITIAL_POSTS: ScheduledPostItem[] = [
   },
   {
     id: 'post-102',
-    title: 'And ToolKit v0.5.0 Kiadási Csomag és Audit Napló Dokumentáció (ZIP)',
+    title: 'And ToolKit v0.5.1 Kiadási Csomag és Audit Napló Dokumentáció (ZIP)',
     date: '2026-11-09',
     time: '10:30',
     category: 'Kiadás',
     author: 'galandras12+AI',
-    excerpt: 'Teljes REST API végpontok, GDPR Cookie Consent Mode v2, Képoptimalizáló és Biztonsági Audit Napló modul.',
+    excerpt: 'Teljes REST API végpontok, GDPR Cookie Consent Mode v2, Képoptimalizáló és Biztonsági Audit Napló modul (Critical Only szűrővel).',
     postType: 'download',
     views: 5180,
     downloads: 1840,
@@ -122,6 +122,19 @@ export const INITIAL_AUDIT_ENTRIES: AuditLogEntry[] = [
     newVersion: '7.1.0',
     ipLocation: '84.2.44.19 (Budapest, HU)',
     deviceBrowser: 'macOS 15 · Chrome 141.0',
+    severity: 'critical',
+  },
+  {
+    id: 'log-902b',
+    timestamp: '2026-11-03 07:10:44',
+    category: 'filesystem_change',
+    actionLabel: 'Fájlrendszer Változás Észlelve (Kritikus)',
+    actorUser: 'galandras12',
+    actorRole: 'administrator',
+    targetObject: 'wp-config.php & /wp-content/plugins/and-toolkit/and-toolkit.php',
+    details: 'Magas kockázatú fájlrendszer-módosítás (SHA-256 hash változás észlelve a wp-config.php és a bővítmény fájlrendszerében).',
+    ipLocation: '84.2.44.19 (Budapest, HU)',
+    deviceBrowser: 'macOS 15 · SFTP / WP File Integrity Monitor',
     severity: 'critical',
   },
   {
@@ -409,11 +422,11 @@ export const INITIAL_STATE: ToolkitState = {
     sizePreset: 'standard',
     fontStyle: 'display-bold',
     animation: 'pulse-glow',
-    badgeText: 'ÚJ VERZIÓ · v0.5.0',
-    headline: 'And ToolKit v0.5.0 megjelent: Biztonsági Audit Naplózás (.log/.txt/.csv) és E-mail Értesítők!',
-    subtext: 'Kövesse nyomon a bejelentkezéseket, plugin/téma/poszt/oldal/felhasználó műveleteket és a WP mag frissítéseket.',
+    badgeText: 'ÚJ VERZIÓ · v0.5.1',
+    headline: 'And ToolKit v0.5.1: Critical Only E-mail Riasztás Szűrő a Biztonsági Naplóban!',
+    subtext: 'Szűrje az e-mail értesítéseket kizárólag a kritikus WordPress mag (Core) frissítésekre és fájlrendszer-változásokra.',
     ctaLabel: 'Naplózás megnyitása',
-    ctaUrl: '/kiadasok/and-toolkit-v0-5-0',
+    ctaUrl: '/kiadasok/and-toolkit-v0-5-1',
     dismissible: true,
     showIcon: true,
     impressions: 36480,
@@ -508,6 +521,7 @@ export const INITIAL_STATE: ToolkitState = {
     enabled: true,
     showSidebarAuditWidget: true,
     recipientEmail: 'galandras12@gmail.com',
+    criticalOnlyEmails: false,
     logUserLogins: true,
     logPluginChanges: true,
     logThemeChanges: true,
@@ -741,7 +755,7 @@ export function formatAuditLogsForExport(
   if (format === 'txt') {
     const banner = [
       '================================================================================',
-      'AND TOOLKIT v0.5.0 — WORDPRESS 7.1 BIZTONSÁGI ÉS ESEMÉNYNAPLÓ (.TXT EXPORT)',
+      'AND TOOLKIT v0.5.1 — WORDPRESS 7.1 BIZTONSÁGI ÉS ESEMÉNYNAPLÓ (.TXT EXPORT)',
       `Generálva: 2026-11-03 · Bejegyzések száma: ${entries.length}`,
       '================================================================================',
       '',
@@ -775,7 +789,21 @@ export function formatAuditLogsForExport(
 }
 
 /**
- * Determine whether a login event should trigger an email notification according to v0.5.0 rules
+ * Determine whether an audit event is considered high-impact / critical
+ * (Core WordPress updates, file system changes, or explicit critical severity)
+ */
+export function isHighImpactCriticalEvent(
+  entry: Pick<AuditLogEntry, 'category' | 'severity'>
+): boolean {
+  return (
+    entry.category === 'core_manual_update' ||
+    entry.category === 'filesystem_change' ||
+    entry.severity === 'critical'
+  );
+}
+
+/**
+ * Determine whether a login event should trigger an email notification according to v0.5.1 rules
  */
 export function shouldSendLoginEmailAlert(
   config: Pick<
@@ -784,10 +812,19 @@ export function shouldSendLoginEmailAlert(
     | 'loginEmailScope'
     | 'newDeviceLocationEmailEnabled'
     | 'newDeviceTargetRoles'
-  >,
+  > & { criticalOnlyEmails?: boolean },
   actorRole: WpUserRole,
   isNewDeviceOrLocation: boolean
 ): { send: boolean; reason: string } {
+  // v0.5.1: When 'Critical Only' mode is enabled, routine/new-device login emails are suppressed
+  if (config.criticalOnlyEmails) {
+    return {
+      send: false,
+      reason:
+        'Critical Only (Csak Kritikus) szűrő aktív: e-mail küldés csak WP mag frissítés vagy fájlrendszer-változás esetén',
+    };
+  }
+
   // Check role-scoped standard login notification
   if (config.loginEmailEnabled) {
     if (config.loginEmailScope === 'all-users') {
@@ -829,6 +866,91 @@ export function shouldSendLoginEmailAlert(
 }
 
 /**
+ * v0.5.1: Evaluate whether any Audit Log event should dispatch an email notification,
+ * respecting the 'Critical Only' (criticalOnlyEmails) toggle.
+ */
+export function shouldSendAuditEventEmail(
+  config: AuditLogConfig,
+  entry: Pick<
+    AuditLogEntry,
+    'category' | 'severity' | 'actorRole' | 'isNewDeviceOrLocation'
+  >
+): { send: boolean; reason: string } {
+  if (!config.enabled) {
+    return { send: false, reason: 'A Biztonsági Naplózás & E-mail modul ki van kapcsolva' };
+  }
+
+  // When 'Critical Only' is enabled, ONLY high-impact events (core WP updates or file system changes) trigger emails
+  if (config.criticalOnlyEmails) {
+    if (isHighImpactCriticalEvent(entry)) {
+      return {
+        send: true,
+        reason:
+          entry.category === 'filesystem_change'
+            ? 'Critical Only riasztás: Magas kockázatú fájlrendszer-változás észlelve'
+            : 'Critical Only riasztás: Kritikus WordPress Mag (Core) frissítés',
+      };
+    }
+    return {
+      send: false,
+      reason:
+        'Critical Only szűrő aktív: alacsony/közepes prioritású esemény e-mail riasztása kiszűrve',
+    };
+  }
+
+  // Standard (non-Critical-Only) rules
+  if (entry.category === 'user_login' && entry.actorRole !== 'system') {
+    return shouldSendLoginEmailAlert(
+      config,
+      entry.actorRole,
+      Boolean(entry.isNewDeviceOrLocation)
+    );
+  }
+
+  if (entry.category === 'core_manual_update') {
+    const send = config.updateAvailableEmailEnabled && config.notifyCoreUpdates;
+    return {
+      send,
+      reason: send
+        ? 'WordPress Mag (Core) frissítési e-mail értesítés aktív'
+        : 'WP Mag frissítési e-mail értesítés ki van kapcsolva',
+    };
+  }
+
+  if (entry.category === 'filesystem_change') {
+    return {
+      send: true,
+      reason: 'Kritikus fájlrendszer-változás biztonsági riasztás',
+    };
+  }
+
+  if (entry.category === 'plugin_lifecycle') {
+    const send = config.updateAvailableEmailEnabled && config.notifyPluginUpdates;
+    return {
+      send,
+      reason: send
+        ? 'Plugin frissítési e-mail értesítés aktív'
+        : 'Plugin frissítési e-mail értesítés ki van kapcsolva',
+    };
+  }
+
+  if (entry.category === 'theme_lifecycle') {
+    const send = config.updateAvailableEmailEnabled && config.notifyThemeUpdates;
+    return {
+      send,
+      reason: send
+        ? 'Téma frissítési e-mail értesítés aktív'
+        : 'Téma frissítési e-mail értesítés ki van kapcsolva',
+    };
+  }
+
+  return {
+    send: false,
+    reason: 'Az esemény csak naplózásra került (azonnali e-mail nem szükséges)',
+  };
+}
+
+/**
  * Build email notification preview for available updates (current -> new version) and 24h daily digest
  */
 export function buildUpdateNotificationEmailPreview(config: AuditLogConfig): {
@@ -837,6 +959,10 @@ export function buildUpdateNotificationEmailPreview(config: AuditLogConfig): {
   includedCount: number;
 } {
   const filtered = config.pendingUpdates.filter((u) => {
+    // v0.5.1: If 'Critical Only' is enabled, only include core WordPress updates in email notifications
+    if (config.criticalOnlyEmails) {
+      return u.componentType === 'core';
+    }
     if (u.componentType === 'plugin' && !config.notifyPluginUpdates) return false;
     if (u.componentType === 'theme' && !config.notifyThemeUpdates) return false;
     if (u.componentType === 'core' && !config.notifyCoreUpdates) return false;
@@ -844,6 +970,9 @@ export function buildUpdateNotificationEmailPreview(config: AuditLogConfig): {
   });
 
   const autoUpdated24h = filtered.filter((u) => u.autoUpdatedInLast24h);
+  const filesystemEvents = config.entries.filter(
+    (e) => e.category === 'filesystem_change' || e.category === 'core_manual_update'
+  );
 
   const lines = filtered.map(
     (u) =>
@@ -852,26 +981,43 @@ export function buildUpdateNotificationEmailPreview(config: AuditLogConfig): {
       })`
   );
 
-  const subject = `[And ToolKit v0.5.0] WordPress Frissítési Értesítő (${filtered.length} komponens) & Napi Összefoglaló (${config.dailyDigestTime})`;
+  const subject = config.criticalOnlyEmails
+    ? `[And ToolKit v0.5.1 · CRITICAL ONLY] Kritikus WP Mag Frissítés & Fájlrendszer Riasztás (${filtered.length} mag frissítés)`
+    : `[And ToolKit v0.5.1] WordPress Frissítési Értesítő (${filtered.length} komponens) & Napi Összefoglaló (${config.dailyDigestTime})`;
 
   const body = [
     `Címzett: ${config.recipientEmail}`,
     `Tárgy: ${subject}`,
+    `Riasztási Szűrő Mód: ${
+      config.criticalOnlyEmails
+        ? 'CRITICAL ONLY (Csak magas kockázatú WP Mag frissítések és Fájlrendszer-változások)'
+        : 'Normál (Minden kijelölt belépési és komponens-frissítési esemény)'
+    }`,
     `Ütemezett Napi Összefoglaló Időpontja: Minden nap ${config.dailyDigestTime} órakor`,
     '------------------------------------------------------------------------',
     '1. ELÉRHETŐ ÉS VÉGREHAJTOTT FRISSÍTÉSEK (AKTUÁLIS VERZIÓ -> ÚJ VERZIÓ):',
     ...(lines.length > 0
       ? lines
       : ['• Jelenleg nincs kiválasztott komponens a frissítési értesítőben.']),
-    '',
-    `2. ELMÚLT 24 ÓRÁBAN AUTOMATIKUSAN FRISSÜLT KOMPONENSEK (${autoUpdated24h.length} db):`,
-    ...(autoUpdated24h.length > 0
-      ? autoUpdated24h.map(
-          (a) => `✓ ${a.name}: v${a.currentVersion} -> v${a.newVersion} (Sikeres auto-update)`
-        )
-      : ['• Az elmúlt 24 órában nem történt automatikus háttérfrissítés.']),
+    ...(config.criticalOnlyEmails
+      ? [
+          '',
+          `2. MAGAS KOCKÁZATÚ FÁJLRENDSZER ÉS WP CORE ESEMÉNYEK (${filesystemEvents.length} db):`,
+          ...filesystemEvents.slice(0, 3).map(
+            (ev) => `• [CRITICAL] ${ev.actionLabel} — ${ev.targetObject} (${ev.timestamp})`
+          ),
+        ]
+      : [
+          '',
+          `2. ELMÚLT 24 ÓRÁBAN AUTOMATIKUSAN FRISSÜLT KOMPONENSEK (${autoUpdated24h.length} db):`,
+          ...(autoUpdated24h.length > 0
+            ? autoUpdated24h.map(
+                (a) => `✓ ${a.name}: v${a.currentVersion} -> v${a.newVersion} (Sikeres auto-update)`
+              )
+            : ['• Az elmúlt 24 órában nem történt automatikus háttérfrissítés.']),
+        ]),
     '------------------------------------------------------------------------',
-    'And ToolKit v0.5.0 · WordPress 7.1 Biztonsági Napló & E-mail Értesítő Modul',
+    'And ToolKit v0.5.1 · WordPress 7.1 Biztonsági Napló & E-mail Értesítő Modul',
   ].join('\n');
 
   return {
@@ -927,8 +1073,8 @@ export function generateWordPressPluginPhp(state: ToolkitState): string {
 /**
  * Plugin Name:       And ToolKit
  * Plugin URI:        https://github.com/galandras12/and-toolkit
- * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó, látogatói/letöltési statisztika, kötelező GDPR Cookie kezelő, Információs Banner, Kép/Upload/Lazy-Load/Cache Optimalizáló és Biztonsági Audit Naplózás & E-mail Értesítő modul.
- * Version:           0.5.0
+ * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó, látogatói/letöltési statisztika, kötelező GDPR Cookie kezelő, Információs Banner, Kép/Upload/Lazy-Load/Cache Optimalizáló és Biztonsági Audit Naplózás & E-mail Értesítő modul (Critical Only szűrővel).
+ * Version:           0.5.1
  * Requires at least: 6.2
  * Tested up to:      7.1
  * Requires PHP:      8.0
@@ -944,7 +1090,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class And_ToolKit_Plugin {
-    public const VERSION    = '0.5.0';
+    public const VERSION    = '0.5.1';
     public const AUTHOR     = 'galandras12+AI';
     public const WP_TARGET  = '7.1';
     public const PHP_TARGET = '8.0';
@@ -1088,6 +1234,7 @@ final class And_ToolKit_Plugin {
             'audit_log'   => [
                 'enabled'                        => ${state.auditLog.enabled ? 'true' : 'false'},
                 'recipient_email'                => '${state.auditLog.recipientEmail.replace(/'/g, "\\'")}',
+                'critical_only_emails'           => ${state.auditLog.criticalOnlyEmails ? 'true' : 'false'},
                 'export_format'                  => '${state.auditLog.defaultExportFormat}',
                 'login_email_enabled'            => ${state.auditLog.loginEmailEnabled ? 'true' : 'false'},
                 'login_email_scope'              => '${state.auditLog.loginEmailScope}',
@@ -1133,12 +1280,12 @@ final class And_ToolKit_Plugin {
     }
 
     // ========================================================================
-    // v0.5.0 BIZTONSÁGI NAPLÓZÁS & E-MAIL ÉRTESÍTÉS METÓDUSOK
+    // v0.5.1 BIZTONSÁGI NAPLÓZÁS & E-MAIL ÉRTESÍTÉS METÓDUSOK (CRITICAL ONLY)
     // ========================================================================
 
     public static function log_user_login_event( string $user_login, object $user ): void {
         $audit = self::get_config()['audit_log'];
-        if ( ! $audit['enabled'] ) {
+        if ( ! $audit['enabled'] || $audit['critical_only_emails'] ) {
             return;
         }
         $roles = isset( $user->roles ) && is_array( $user->roles ) ? $user->roles : [ 'subscriber' ];
@@ -1603,23 +1750,23 @@ export function auditWordPressPhpCompatibility(
     {
       id: 'php80-match-expression',
       category: 'PHP 8.0+',
-      title: 'PHP 8.0 Match Kifejezések & v0.5.0 Osztálykonstansok',
+      title: 'PHP 8.0 Match Kifejezések & v0.5.1 Osztálykonstansok',
       description:
-        'A sablonválasztó és a belépési e-mail jogosultság-ellenőrző a típusbiztos PHP 8.0 match () kifejezést és a public const VERSION = \'0.5.0\' konstanst használja.',
+        'A sablonválasztó és a belépési e-mail jogosultság-ellenőrző a típusbiztos PHP 8.0 match () kifejezést és a public const VERSION = \'0.5.1\' konstanst használja.',
       passed:
         phpCode.includes("match ( $atts['style'] )") &&
         phpCode.includes("match ( $audit['login_email_scope'] )") &&
-        phpCode.includes("public const VERSION    = '0.5.0';"),
+        phpCode.includes("public const VERSION    = '0.5.1';"),
     },
     {
       id: 'wp71-header-meta',
       category: 'WordPress 7.1',
-      title: 'WordPress 7.1 Fejléc és v0.5.0 Metaadat Szabvány',
+      title: 'WordPress 7.1 Fejléc és v0.5.1 Metaadat Szabvány',
       description:
-        'Plugin Name: And ToolKit, Version: 0.5.0, Author: galandras12+AI és Tested up to: 7.1 fejléc mezők hiánytalanul beállítva.',
+        'Plugin Name: And ToolKit, Version: 0.5.1, Author: galandras12+AI és Tested up to: 7.1 fejléc mezők hiánytalanul beállítva.',
       passed:
         phpCode.includes('Plugin Name:       And ToolKit') &&
-        phpCode.includes('Version:           0.5.0') &&
+        phpCode.includes('Version:           0.5.1') &&
         phpCode.includes('Tested up to:      7.1') &&
         phpCode.includes('Author:            galandras12+AI'),
     },
@@ -1634,9 +1781,9 @@ export function auditWordPressPhpCompatibility(
     {
       id: 'audit-log-email-module',
       category: 'Biztonság',
-      title: 'v0.5.0 Biztonsági Audit Naplózás (.log/.txt/.csv) & E-mail Értesítő Modul',
+      title: 'v0.5.1 Biztonsági Audit Naplózás (.log/.txt/.csv) & Critical Only E-mail Szűrő',
       description:
-        'A wp_login, upgrader_process_complete, save_post, user_register, set_user_role, automatic_updates_complete és _core_updated_successfully hookok, valamint a wp_mail() riasztások és az /audit-export végpont aktívak.',
+        'A wp_login, upgrader_process_complete, save_post, user_register, set_user_role, automatic_updates_complete és _core_updated_successfully hookok, a critical_only_emails szűrő és az /audit-export végpont aktívak.',
       passed:
         phpCode.includes("add_action( 'wp_login'") &&
         phpCode.includes("add_action( 'upgrader_process_complete'") &&
@@ -1644,6 +1791,7 @@ export function auditWordPressPhpCompatibility(
         phpCode.includes("add_action( 'set_user_role'") &&
         phpCode.includes("add_action( 'automatic_updates_complete'") &&
         phpCode.includes("add_action( '_core_updated_successfully'") &&
+        phpCode.includes("'critical_only_emails'") &&
         phpCode.includes("'/audit-export'") &&
         Boolean(state.auditLog.recipientEmail),
     },

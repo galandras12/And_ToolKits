@@ -14,7 +14,9 @@ import {
   generateWordPressPluginPhp,
   getDaysUntilEvent,
   getFilteredCalendarPosts,
+  isHighImpactCriticalEvent,
   searchPosts,
+  shouldSendAuditEventEmail,
   shouldSendLoginEmailAlert,
   validateNewPostInput,
 } from './toolkitLogic';
@@ -87,11 +89,11 @@ test('filterAuditLogEntries and formatAuditLogsForExport support .log, .txt, and
   const csvOut = formatAuditLogsForExport(INITIAL_AUDIT_ENTRIES, 'csv');
 
   assert.equal(logOut.includes('actor="galandras12"'), true);
-  assert.equal(txtOut.includes('AND TOOLKIT v0.5.0'), true);
+  assert.equal(txtOut.includes('AND TOOLKIT v0.5.1'), true);
   assert.equal(csvOut.startsWith('ID,Idopont,Kategoria'), true);
 });
 
-test('shouldSendLoginEmailAlert and buildUpdateNotificationEmailPreview evaluate v0.5.0 email rules accurately', () => {
+test('shouldSendLoginEmailAlert and buildUpdateNotificationEmailPreview evaluate v0.5.1 email rules accurately', () => {
   const adminCheck = shouldSendLoginEmailAlert(
     {
       loginEmailEnabled: true,
@@ -121,6 +123,52 @@ test('shouldSendLoginEmailAlert and buildUpdateNotificationEmailPreview evaluate
   assert.equal(emailPreview.body.includes('v7.1.0  --->  Új verzió: v7.1.1-security'), true);
 });
 
+test('v0.5.1 Critical Only toggle filters email notifications to only send alerts for high-impact events (core WP updates or file system changes)', () => {
+  const criticalConfig = {
+    ...INITIAL_STATE.auditLog,
+    criticalOnlyEmails: true,
+  };
+
+  // Non-critical events (routine login, plugin update, user registration) must NOT send email when criticalOnlyEmails is true
+  const loginDecision = shouldSendAuditEventEmail(criticalConfig, {
+    category: 'user_login',
+    severity: 'warning',
+    actorRole: 'administrator',
+    isNewDeviceOrLocation: true,
+  });
+  assert.equal(loginDecision.send, false);
+
+  const pluginDecision = shouldSendAuditEventEmail(criticalConfig, {
+    category: 'plugin_lifecycle',
+    severity: 'info',
+    actorRole: 'administrator',
+  });
+  assert.equal(pluginDecision.send, false);
+
+  // High-impact events (core WordPress update & file system change) MUST send email when criticalOnlyEmails is true
+  const coreDecision = shouldSendAuditEventEmail(criticalConfig, {
+    category: 'core_manual_update',
+    severity: 'critical',
+    actorRole: 'administrator',
+  });
+  assert.equal(coreDecision.send, true);
+  assert.equal(isHighImpactCriticalEvent({ category: 'core_manual_update', severity: 'critical' }), true);
+
+  const fsDecision = shouldSendAuditEventEmail(criticalConfig, {
+    category: 'filesystem_change',
+    severity: 'critical',
+    actorRole: 'administrator',
+  });
+  assert.equal(fsDecision.send, true);
+  assert.equal(isHighImpactCriticalEvent({ category: 'filesystem_change', severity: 'critical' }), true);
+
+  // Email preview in Critical Only mode filters pending updates to Core only (1 item instead of 4)
+  const criticalPreview = buildUpdateNotificationEmailPreview(criticalConfig);
+  assert.equal(criticalPreview.includedCount, 1);
+  assert.equal(criticalPreview.subject.includes('CRITICAL ONLY'), true);
+  assert.equal(criticalPreview.body.includes('wp-config.php'), true);
+});
+
 test('validateNewPostInput enforces required fields', () => {
   assert.equal(
     validateNewPostInput({ title: 'Rövid', date: '2026-11-10', time: '12:00', excerpt: 'Érvényes kivonat szöveg' }).valid,
@@ -132,10 +180,10 @@ test('validateNewPostInput enforces required fields', () => {
   );
 });
 
-test('generateWordPressPluginPhp and auditWordPressPhpCompatibility pass all v0.5.0 WordPress 7.1, PHP 8.0, GDPR, Banner, Optimizer & Audit Log checks', () => {
+test('generateWordPressPluginPhp and auditWordPressPhpCompatibility pass all v0.5.1 WordPress 7.1, PHP 8.0, GDPR, Banner, Optimizer & Audit Log checks', () => {
   const php = generateWordPressPluginPhp(INITIAL_STATE);
   assert.equal(php.includes('Plugin Name:       And ToolKit'), true);
-  assert.equal(php.includes('Version:           0.5.0'), true);
+  assert.equal(php.includes('Version:           0.5.1'), true);
   assert.equal(php.includes('Tested up to:      7.1'), true);
   assert.equal(php.includes('Requires PHP:      8.0'), true);
   assert.equal(php.includes('Author:            galandras12+AI'), true);
@@ -144,6 +192,7 @@ test('generateWordPressPluginPhp and auditWordPressPhpCompatibility pass all v0.
   assert.equal(php.includes("add_action( 'upgrader_process_complete'"), true);
   assert.equal(php.includes("add_action( 'automatic_updates_complete'"), true);
   assert.equal(php.includes("add_action( '_core_updated_successfully'"), true);
+  assert.equal(php.includes("'critical_only_emails'"), true);
 
   const audit = auditWordPressPhpCompatibility(php, INITIAL_STATE);
   assert.equal(audit.allPassed, true);

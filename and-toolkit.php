@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       And ToolKit
  * Plugin URI:        https://github.com/galandras12/and-toolkit
- * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó, látogatói/letöltési statisztika, kötelező GDPR Cookie kezelő, Információs Banner, Kép/Upload/Lazy-Load/Cache Optimalizáló és Biztonsági Audit Naplózás & E-mail Értesítő modul.
- * Version:           0.5.0
+ * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó, látogatói/letöltési statisztika, kötelező GDPR Cookie kezelő, Információs Banner, Kép/Upload/Lazy-Load/Cache Optimalizáló és Biztonsági Audit Naplózás & E-mail Értesítő modul (Critical Only szűrővel).
+ * Version:           0.5.1
  * Requires at least: 6.2
  * Tested up to:      7.1
  * Requires PHP:      8.0
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class And_ToolKit_Plugin {
-    public const VERSION    = '0.5.0';
+    public const VERSION    = '0.5.1';
     public const AUTHOR     = 'galandras12+AI';
     public const WP_TARGET  = '7.1';
     public const PHP_TARGET = '8.0';
@@ -140,11 +140,11 @@ final class And_ToolKit_Plugin {
                 'size_preset'      => 'standard',
                 'font_style'       => 'display-bold',
                 'animation'        => 'pulse-glow',
-                'badge_text'       => 'ÚJ VERZIÓ · v0.5.0',
-                'headline'         => 'And ToolKit v0.5.0 megjelent: Biztonsági Audit Naplózás (.log/.txt/.csv) és E-mail Értesítők!',
-                'subtext'          => 'Kövesse nyomon a bejelentkezéseket, plugin/téma/poszt/oldal/felhasználó műveleteket és a WP mag frissítéseket.',
+                'badge_text'       => 'ÚJ VERZIÓ · v0.5.1',
+                'headline'         => 'And ToolKit v0.5.1: Critical Only E-mail Riasztás Szűrő a Biztonsági Naplóban!',
+                'subtext'          => 'Szűrje az e-mail értesítéseket kizárólag a kritikus WordPress mag (Core) frissítésekre és fájlrendszer-változásokra.',
                 'cta_label'        => 'Naplózás megnyitása',
-                'cta_url'          => '/kiadasok/and-toolkit-v0-5-0',
+                'cta_url'          => '/kiadasok/and-toolkit-v0-5-1',
                 'dismissible'      => true,
             ],
             'optimizer'   => [
@@ -168,6 +168,7 @@ final class And_ToolKit_Plugin {
             'audit_log'   => [
                 'enabled'                        => true,
                 'recipient_email'                => 'galandras12@gmail.com',
+                'critical_only_emails'           => false,
                 'export_format'                  => 'log',
                 'login_email_enabled'            => true,
                 'login_email_scope'              => 'admins-only',

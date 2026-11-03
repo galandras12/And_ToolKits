@@ -49,7 +49,7 @@ import { AuditLogModulePanel } from './components/AuditLogModulePanel';
 import { OverviewAndExportPanel } from './components/OverviewAndExportPanel';
 import { AndWrenchLogo } from './components/AndWrenchLogo';
 
-const STORAGE_KEY = 'and_toolkit_wp_state_v051';
+const STORAGE_KEY = 'and_toolkit_wp_state_v052';
 
 export default function App() {
   const [state, setState] = useState<ToolkitState>(() => {

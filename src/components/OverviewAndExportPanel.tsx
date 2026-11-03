@@ -179,7 +179,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
         <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
           <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Regisztrált WordPress 7.1 Rövidkódok (7 Shortcode), Filterek és REST Végpontok
+              Regisztrált WordPress 7.1 Rövidkódok (8 Shortcode), Filterek és REST Végpontok
             </h3>
           </div>
           <div className="overflow-x-auto">

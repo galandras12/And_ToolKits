@@ -258,7 +258,7 @@ export const AuditLogModulePanel: React.FC<AuditLogModulePanelProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-            08. Biztonsági Audit Naplózás &amp; E-mail Értesítés Modul (v0.5.1)
+            08. Biztonsági Audit Naplózás &amp; E-mail Értesítés Modul (v0.5.2)
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Teljes körű WordPress 7.1 eseménynapló (.log, .txt, .csv mentéssel), Critical Only szűrővel, bejelentkezési riasztásokkal és verziókövető e-mailekkel.
@@ -290,7 +290,7 @@ export const AuditLogModulePanel: React.FC<AuditLogModulePanelProps> = ({
             <p className="text-xs text-slate-400">
               Rögzített események: <span className="font-mono text-white font-semibold">{config.entries.length} db</span> · Kiküldött e-mail riasztások:{' '}
               <span className="font-mono text-emerald-400 font-semibold">{config.emailsSentTotal} db</span> · Címzett:{' '}
-              <span className="font-mono text-blue-300">{config.recipientEmail}</span>
+              <span className="font-mono text-blue-300">{config.recipientEmail || '(webhely admin e-mail)'}</span>
             </p>
           </div>
 
@@ -475,6 +475,7 @@ export const AuditLogModulePanel: React.FC<AuditLogModulePanelProps> = ({
               type="email"
               value={config.recipientEmail}
               onChange={(e) => onUpdateConfig({ recipientEmail: e.target.value })}
+              placeholder="üresen: webhely admin e-mail"
               aria-label="Értesítési e-mail cím"
               className="px-2.5 py-1 text-xs font-mono rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100"
             />

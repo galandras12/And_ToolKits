@@ -99,10 +99,10 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             <AndWrenchLogo size="lg" />
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                And ToolKit v0.5.1 — WordPress 7.1 &amp; PHP 8.0+ Forráskód (and-toolkit.php)
+                And ToolKit v0.5.2 — WordPress 7.1 &amp; PHP 8.0+ Forráskód (and-toolkit.php)
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong> · Verzió: <span className="font-mono">0.5.1</span> · Célkörnyezet: <span className="font-mono">WordPress 7.1 / PHP 8.0+ / GDPR / Optimalizáló &amp; Biztonsági Naplózás</span>
+                Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong> · Verzió: <span className="font-mono">0.5.2</span> · Célkörnyezet: <span className="font-mono">WordPress 7.1 / PHP 8.0+ / GDPR / Optimalizáló &amp; Biztonsági Naplózás</span>
               </p>
             </div>
           </div>
@@ -142,7 +142,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                WordPress 7.1, PHP 8.0, EU GDPR, Optimalizáló &amp; Biztonsági Audit Napló Jelentés (v0.5.1)
+                WordPress 7.1, PHP 8.0, EU GDPR, Optimalizáló &amp; Biztonsági Audit Napló Jelentés (v0.5.2)
               </h3>
             </div>
             <span className="text-xs font-mono font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
@@ -293,7 +293,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                 </tr>
                 <tr>
                   <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-slate-100">
-                    08. Biztonsági Audit Naplózás &amp; E-mail Értesítő (v0.5.1)
+                    08. Biztonsági Audit Naplózás &amp; E-mail Értesítő (v0.5.2)
                   </td>
                   <td className="py-2.5 px-3 font-mono text-blue-600 dark:text-blue-400">
                     [wtk_security_badge]
@@ -320,14 +320,14 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                GitHub Közzététel Előkészítve (v0.5.1 Release)
+                GitHub Közzététel Előkészítve (v0.5.2 Release)
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                A gyökérkönyvtárban az önálló <code className="font-mono">/and-toolkit.php</code> és a látványos <code className="font-mono">/README.md</code> frissítve a <code className="font-mono">0.5.1</code> Biztonsági Audit Naplózás (.log/.txt/.csv) és Critical Only E-mail Értesítő modullal.
+                A gyökérkönyvtárban az önálló <code className="font-mono">/and-toolkit.php</code> és a látványos <code className="font-mono">/README.md</code> frissítve a <code className="font-mono">0.5.2</code> Biztonsági Audit Naplózás (.log/.txt/.csv) és Critical Only E-mail Értesítő modullal.
               </p>
             </div>
             <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-              Git: main · tag: v0.5.1
+              Git: main · tag: v0.5.2
             </span>
           </div>
           <div className="p-3 rounded-md bg-slate-950 text-slate-200 text-xs font-mono overflow-x-auto space-y-1">
@@ -353,7 +353,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             </h2>
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-                Verzió: 0.5.1
+                Verzió: 0.5.2
               </span>
               <span aria-hidden="true">·</span>
               <span>
@@ -683,7 +683,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    08. Biztonsági Naplózás &amp; E-mail Értesítés (v0.5.1)
+                    08. Biztonsági Naplózás &amp; E-mail Értesítés (v0.5.2)
                   </h3>
                   <div className="text-xs text-slate-500 font-mono">
                     {state.auditLog.entries.length} esemény · .{state.auditLog.defaultExportFormat.toUpperCase()} export · {state.auditLog.criticalOnlyEmails ? 'Critical Only' : `Napi: ${state.auditLog.dailyDigestTime}`}
@@ -817,7 +817,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              WordPress 7.1, PHP 8.0+, EU GDPR, Optimalizáló &amp; Biztonsági Napló Audit (v0.5.1)
+              WordPress 7.1, PHP 8.0+, EU GDPR, Optimalizáló &amp; Biztonsági Napló Audit (v0.5.2)
             </h3>
           </div>
           <div className="flex items-center gap-3 text-xs">

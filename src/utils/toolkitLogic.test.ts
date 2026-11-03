@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -89,7 +90,7 @@ test('filterAuditLogEntries and formatAuditLogsForExport support .log, .txt, and
   const csvOut = formatAuditLogsForExport(INITIAL_AUDIT_ENTRIES, 'csv');
 
   assert.equal(logOut.includes('actor="galandras12"'), true);
-  assert.equal(txtOut.includes('AND TOOLKIT v0.5.1'), true);
+  assert.equal(txtOut.includes('AND TOOLKIT v0.5.2'), true);
   assert.equal(csvOut.startsWith('ID,Idopont,Kategoria'), true);
 });
 
@@ -180,21 +181,51 @@ test('validateNewPostInput enforces required fields', () => {
   );
 });
 
-test('generateWordPressPluginPhp and auditWordPressPhpCompatibility pass all v0.5.1 WordPress 7.1, PHP 8.0, GDPR, Banner, Optimizer & Audit Log checks', () => {
+test('generateWordPressPluginPhp és auditWordPressPhpCompatibility: v0.5.2 teljes körű ellenőrzés', () => {
   const php = generateWordPressPluginPhp(INITIAL_STATE);
   assert.equal(php.includes('Plugin Name:       And ToolKit'), true);
-  assert.equal(php.includes('Version:           0.5.1'), true);
-  assert.equal(php.includes('Tested up to:      7.1'), true);
+  assert.equal(php.includes('Version:           0.5.2'), true);
+  assert.equal(php.includes('Requires at least: 6.3'), true);
   assert.equal(php.includes('Requires PHP:      8.0'), true);
-  assert.equal(php.includes('Author:            galandras12+AI'), true);
   assert.equal(php.includes('declare(strict_types=1);'), true);
   assert.equal(php.includes("add_action( 'wp_login'"), true);
-  assert.equal(php.includes("add_action( 'upgrader_process_complete'"), true);
-  assert.equal(php.includes("add_action( 'automatic_updates_complete'"), true);
   assert.equal(php.includes("add_action( '_core_updated_successfully'"), true);
-  assert.equal(php.includes("'critical_only_emails'"), true);
+  assert.equal(php.includes('/*{{DEFAULTS}}*/'), false);
+  assert.equal(php.includes('@gmail.com'), false);
 
   const audit = auditWordPressPhpCompatibility(php, INITIAL_STATE);
+  assert.deepEqual(
+    audit.checks.filter((c) => !c.passed).map((c) => c.id),
+    []
+  );
   assert.equal(audit.allPassed, true);
-  assert.equal(audit.passedCount, 11);
+  assert.equal(audit.passedCount, audit.totalCount);
+  assert.equal(audit.totalCount, 12);
+});
+
+test('az audit nem engedi át a régi, üres vázat (regressziós védelem)', () => {
+  const stub = "<?php declare(strict_types=1); if ( ! defined( 'ABSPATH' ) ) { exit; } final class And_ToolKit_Plugin { public const VERSION = '0.5.2'; }";
+  const audit = auditWordPressPhpCompatibility(stub, INITIAL_STATE);
+  assert.equal(audit.allPassed, false);
+  assert.equal(audit.passedCount < 3, true);
+});
+
+test('a generátor PHP-escape-eli a szövegeket (aposztróf és visszaper nem törheti el a kódot)', () => {
+  const state = structuredClone(INITIAL_STATE);
+  state.banner.headline = "Ez egy 'idézőjeles' cím \\";
+  state.auditLog.recipientEmail = "x'; system('id'); //@example.com";
+  const php = generateWordPressPluginPhp(state);
+  assert.equal(php.includes("=> 'Ez egy \\'idézőjeles\\' cím \\\\',"), true);
+  assert.equal(php.includes("system('id')"), false);
+});
+
+test('a gyökér and-toolkit.php megegyezik a generátor kimenetével (nincs elcsúszás)', () => {
+  const onDisk = readFileSync(new URL('../../and-toolkit.php', import.meta.url), 'utf8');
+  assert.equal(onDisk, generateWordPressPluginPhp(INITIAL_STATE));
+});
+
+test('a Studio CSV exportja védett a képlet-injekció ellen', () => {
+  const entries = [{ ...INITIAL_AUDIT_ENTRIES[0], details: '=HYPERLINK("http://evil")' }];
+  const csv = formatAuditLogsForExport(entries, 'csv');
+  assert.equal(csv.includes('"\'=HYPERLINK'), true);
 });

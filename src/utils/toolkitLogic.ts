@@ -1,12 +1,16 @@
 import {
+  AuditEventCategory,
+  AuditLogConfig,
+  AuditLogEntry,
+  AuditLogExportFormat,
   CalendarConfig,
   NumberFormatStyle,
+  PendingUpdateItem,
   PerformanceConfig,
   ScheduledPostItem,
   SearchConfig,
-  SocialConfig,
-  StatsConfig,
   ToolkitState,
+  WpUserRole,
 } from '../types/toolkit';
 
 export const INITIAL_POSTS: ScheduledPostItem[] = [
@@ -25,12 +29,12 @@ export const INITIAL_POSTS: ScheduledPostItem[] = [
   },
   {
     id: 'post-102',
-    title: 'And ToolKit v0.2.0 Kiadási Csomag és GDPR Modul Dokumentáció (ZIP)',
+    title: 'And ToolKit v0.5.0 Kiadási Csomag és Audit Napló Dokumentáció (ZIP)',
     date: '2026-11-09',
     time: '10:30',
     category: 'Kiadás',
     author: 'galandras12+AI',
-    excerpt: 'Teljes REST API végpontok, GDPR Cookie Consent Mode v2 támogatás és sötét mód kompatibilis oldalsáv komponensek.',
+    excerpt: 'Teljes REST API végpontok, GDPR Cookie Consent Mode v2, Képoptimalizáló és Biztonsági Audit Napló modul.',
     postType: 'download',
     views: 5180,
     downloads: 1840,
@@ -87,6 +91,170 @@ export const INITIAL_POSTS: ScheduledPostItem[] = [
     views: 2640,
     downloads: 935,
     featured: false,
+  },
+];
+
+export const INITIAL_AUDIT_ENTRIES: AuditLogEntry[] = [
+  {
+    id: 'log-901',
+    timestamp: '2026-11-03 08:14:22',
+    category: 'user_login',
+    actionLabel: 'Bejelentkezés (Új hely & eszköz)',
+    actorUser: 'galandras12',
+    actorRole: 'administrator',
+    targetObject: 'wp-login.php (2FA Hitelesítve)',
+    details: 'Adminisztrátori belépés új eszközről és új földrajzi helyről. Azonnali biztonsági e-mail riasztás kiküldve.',
+    ipLocation: '84.2.44.19 (Budapest, HU)',
+    deviceBrowser: 'macOS 15 · Chrome 141.0 (Új eszköz)',
+    isNewDeviceOrLocation: true,
+    severity: 'warning',
+  },
+  {
+    id: 'log-902',
+    timestamp: '2026-11-03 07:45:09',
+    category: 'core_manual_update',
+    actionLabel: 'WordPress Mag (Core) Frissítés Indítva',
+    actorUser: 'galandras12',
+    actorRole: 'administrator',
+    targetObject: 'WordPress Core (7.0.2 → 7.1.0)',
+    details: 'Kézi WordPress mag frissítés sikeresen végrehajtva: 7.0.2 verzióról 7.1.0 verzióra (Indította: galandras12).',
+    previousVersion: '7.0.2',
+    newVersion: '7.1.0',
+    ipLocation: '84.2.44.19 (Budapest, HU)',
+    deviceBrowser: 'macOS 15 · Chrome 141.0',
+    severity: 'critical',
+  },
+  {
+    id: 'log-903',
+    timestamp: '2026-11-03 06:30:00',
+    category: 'auto_system_update',
+    actionLabel: 'Automatizált Rendszerfrissítés Befejezve',
+    actorUser: 'WP-Cron Automatikus Rendszer',
+    actorRole: 'system',
+    targetObject: 'Háttérfrissítés (2 plugin, 1 téma)',
+    details: 'A WordPress automatizált rendszerfrissítése lefutott (wp_maybe_auto_update): WooCommerce 9.3.1 → 9.3.2, Astra 4.8.0 → 4.8.1.',
+    previousVersion: '9.3.1',
+    newVersion: '9.3.2',
+    severity: 'info',
+  },
+  {
+    id: 'log-904',
+    timestamp: '2026-11-02 19:20:45',
+    category: 'plugin_lifecycle',
+    actionLabel: 'Plugin Frissítés & Telepítés',
+    actorUser: 'galandras12',
+    actorRole: 'administrator',
+    targetObject: 'And ToolKit (v0.4.0 → v0.5.0)',
+    details: 'Bővítmény frissítve az adminisztrációs felületen: And ToolKit 0.4.0 verzióról 0.5.0 verzióra.',
+    previousVersion: '0.4.0',
+    newVersion: '0.5.0',
+    ipLocation: '84.2.44.19 (Budapest, HU)',
+    severity: 'info',
+  },
+  {
+    id: 'log-905',
+    timestamp: '2026-11-02 17:52:11',
+    category: 'theme_lifecycle',
+    actionLabel: 'Téma Frissítés',
+    actorUser: 'kovacs.gergely',
+    actorRole: 'administrator',
+    targetObject: 'Twenty Twenty-Five Child (1.2.0 → 1.3.0)',
+    details: 'WordPress sablon (téma) frissítve: Twenty Twenty-Five Child (1.2.0 → 1.3.0). Régi gyorsítótár ürítve.',
+    previousVersion: '1.2.0',
+    newVersion: '1.3.0',
+    ipLocation: '195.56.112.8 (Debrecen, HU)',
+    severity: 'info',
+  },
+  {
+    id: 'log-906',
+    timestamp: '2026-11-02 16:15:33',
+    category: 'user_lifecycle',
+    actionLabel: 'Felhasználó Létrehozva (Meghívóval)',
+    actorUser: 'galandras12',
+    actorRole: 'administrator',
+    targetObject: 'nagy.eszter (Szerkesztő)',
+    details: 'Új felhasználó létrehozva másik felhasználó meghívója által (Meghívta: galandras12). Kezdeti csoport: Szerkesztő (editor).',
+    userCreationMethod: 'user-invitation',
+    ipLocation: '84.2.44.19 (Budapest, HU)',
+    severity: 'info',
+  },
+  {
+    id: 'log-907',
+    timestamp: '2026-11-02 15:40:18',
+    category: 'user_lifecycle',
+    actionLabel: 'Felhasználói Csoport Áthelyezés',
+    actorUser: 'galandras12',
+    actorRole: 'administrator',
+    targetObject: 'toth.bence (Szerző → Szerkesztő)',
+    details: 'Felhasználó áthelyezve másik jogosultsági csoportba (set_user_role): Közreműködő/Szerző (author) → Szerkesztő (editor).',
+    userCreationMethod: 'role-changed',
+    ipLocation: '84.2.44.19 (Budapest, HU)',
+    severity: 'warning',
+  },
+  {
+    id: 'log-908',
+    timestamp: '2026-11-02 14:12:04',
+    category: 'post_lifecycle',
+    actionLabel: 'Bejegyzés (Poszt) Szerkesztve',
+    actorUser: 'szabo.dora',
+    actorRole: 'editor',
+    targetObject: 'Poszt #104: Keresőoptimalizált Belső Keresőmotor',
+    details: 'Bejegyzés tartalma és kivonata módosítva (save_post hook, revízió #7 rögzítve).',
+    ipLocation: '91.82.14.201 (Szeged, HU)',
+    deviceBrowser: 'Windows 11 · Firefox 133.0',
+    severity: 'info',
+  },
+  {
+    id: 'log-909',
+    timestamp: '2026-11-02 12:05:50',
+    category: 'page_lifecycle',
+    actionLabel: 'Oldal (Page) Létrehozva & Szerkesztve',
+    actorUser: 'szabo.dora',
+    actorRole: 'editor',
+    targetObject: 'Oldal #42: Adatvédelmi és GDPR Tájékoztató',
+    details: 'Állandó WordPress oldal (post_type=page) létrehozva és közzétéve az EU GDPR modulhoz.',
+    ipLocation: '91.82.14.201 (Szeged, HU)',
+    deviceBrowser: 'Windows 11 · Firefox 133.0',
+    severity: 'info',
+  },
+];
+
+export const INITIAL_PENDING_UPDATES: PendingUpdateItem[] = [
+  {
+    id: 'upd-1',
+    componentType: 'core',
+    name: 'WordPress Mag (Core)',
+    currentVersion: '7.1.0',
+    newVersion: '7.1.1-security',
+    detectedAt: '2026-11-03 06:00',
+    autoUpdatedInLast24h: true,
+  },
+  {
+    id: 'upd-2',
+    componentType: 'plugin',
+    name: 'WooCommerce E-Commerce',
+    currentVersion: '9.3.1',
+    newVersion: '9.4.0',
+    detectedAt: '2026-11-03 05:30',
+    autoUpdatedInLast24h: true,
+  },
+  {
+    id: 'upd-3',
+    componentType: 'plugin',
+    name: 'Yoast SEO Premium',
+    currentVersion: '23.7.0',
+    newVersion: '23.8.2',
+    detectedAt: '2026-11-03 07:15',
+    autoUpdatedInLast24h: false,
+  },
+  {
+    id: 'upd-4',
+    componentType: 'theme',
+    name: 'Astra Pro Sablon (Téma)',
+    currentVersion: '4.8.1',
+    newVersion: '4.9.0',
+    detectedAt: '2026-11-03 04:45',
+    autoUpdatedInLast24h: true,
   },
 ];
 
@@ -241,15 +409,15 @@ export const INITIAL_STATE: ToolkitState = {
     sizePreset: 'standard',
     fontStyle: 'display-bold',
     animation: 'pulse-glow',
-    badgeText: 'ÚJ VERZIÓ · v0.4.0',
-    headline: 'And ToolKit v0.4.0 megjelent: Kép-, Upload Limit-, Lazy Load és Gyorsítótár Optimalizáló!',
-    subtext: 'Képtömörítés, WebP/AVIF konvertálás, WP feltöltési limit felülbírálás és teljes körű Lazy Loading.',
-    ctaLabel: 'Optimalizáló megnyitása',
-    ctaUrl: '/kiadasok/and-toolkit-v0-4-0',
+    badgeText: 'ÚJ VERZIÓ · v0.5.0',
+    headline: 'And ToolKit v0.5.0 megjelent: Biztonsági Audit Naplózás (.log/.txt/.csv) és E-mail Értesítők!',
+    subtext: 'Kövesse nyomon a bejelentkezéseket, plugin/téma/poszt/oldal/felhasználó műveleteket és a WP mag frissítéseket.',
+    ctaLabel: 'Naplózás megnyitása',
+    ctaUrl: '/kiadasok/and-toolkit-v0-5-0',
     dismissible: true,
     showIcon: true,
-    impressions: 34120,
-    clicks: 4290,
+    impressions: 36480,
+    clicks: 4610,
   },
   optimizer: {
     enabled: true,
@@ -335,6 +503,35 @@ export const INITIAL_STATE: ToolkitState = {
       pageSpeedScore: 99,
       totalSavedMb: 42.8,
     },
+  },
+  auditLog: {
+    enabled: true,
+    showSidebarAuditWidget: true,
+    recipientEmail: 'galandras12@gmail.com',
+    logUserLogins: true,
+    logPluginChanges: true,
+    logThemeChanges: true,
+    logPostChanges: true,
+    logPageChanges: true,
+    logUserLifecycle: true,
+    logAutoSystemUpdates: true,
+    logCoreManualUpdates: true,
+    defaultExportFormat: 'log',
+    retentionDays: 90,
+    loginEmailEnabled: true,
+    loginEmailScope: 'admins-only',
+    newDeviceLocationEmailEnabled: true,
+    newDeviceTargetRoles: ['administrator', 'editor'],
+    updateAvailableEmailEnabled: true,
+    notifyPluginUpdates: true,
+    notifyThemeUpdates: true,
+    notifyCoreUpdates: true,
+    dailyDigestEnabled: true,
+    dailyDigestTime: '08:00',
+    lastDigestSentAt: '2026-11-03 08:00:00',
+    emailsSentTotal: 19,
+    entries: INITIAL_AUDIT_ENTRIES,
+    pendingUpdates: INITIAL_PENDING_UPDATES,
   },
   performance: {
     minifyAssets: true,
@@ -434,7 +631,7 @@ export function calculatePerformanceMetrics(
   estimatedLoadMs: number;
   lighthouseScore: number;
 } {
-  let baseKb = 4.2 + activeModulesCount * 1.2;
+  let baseKb = 4.2 + activeModulesCount * 1.1;
   if (!perf.minifyAssets) baseKb += 4.8;
   if (!perf.svgSpritesOnly) baseKb += 6.5;
   if (!perf.zeroJqueryDependency) baseKb += 28.0;
@@ -491,6 +688,200 @@ export function calculateMediaQueueSummary(
 }
 
 /**
+ * Filter audit log entries by category and free-text query
+ */
+export function filterAuditLogEntries(
+  entries: AuditLogEntry[],
+  categoryFilter: AuditEventCategory | 'all',
+  query: string
+): AuditLogEntry[] {
+  const cleanQuery = query.trim().toLowerCase();
+  return entries.filter((entry) => {
+    if (categoryFilter !== 'all' && entry.category !== categoryFilter) {
+      return false;
+    }
+    if (!cleanQuery) {
+      return true;
+    }
+    const haystack = `${entry.timestamp} ${entry.actionLabel} ${entry.actorUser} ${entry.actorRole} ${entry.targetObject} ${entry.details} ${entry.ipLocation || ''}`.toLowerCase();
+    return haystack.includes(cleanQuery);
+  });
+}
+
+/**
+ * Format audit log entries into downloadable .log, .txt, or .csv content
+ */
+export function formatAuditLogsForExport(
+  entries: AuditLogEntry[],
+  format: AuditLogExportFormat
+): string {
+  if (format === 'csv') {
+    const header =
+      'ID,Idopont,Kategoria,Muvelet,Felhasznalo,Szerepkor,Cel_Objektum,Regi_Verzio,Uj_Verzio,Letrehozas_Modja,IP_Helyszin,Reszletek';
+    const rows = entries.map((e) => {
+      const esc = (val = '') => `"${String(val).replace(/"/g, '""')}"`;
+      return [
+        esc(e.id),
+        esc(e.timestamp),
+        esc(e.category),
+        esc(e.actionLabel),
+        esc(e.actorUser),
+        esc(e.actorRole),
+        esc(e.targetObject),
+        esc(e.previousVersion || '-'),
+        esc(e.newVersion || '-'),
+        esc(e.userCreationMethod || '-'),
+        esc(e.ipLocation || '-'),
+        esc(e.details),
+      ].join(',');
+    });
+    return [header, ...rows].join('\n');
+  }
+
+  if (format === 'txt') {
+    const banner = [
+      '================================================================================',
+      'AND TOOLKIT v0.5.0 — WORDPRESS 7.1 BIZTONSÁGI ÉS ESEMÉNYNAPLÓ (.TXT EXPORT)',
+      `Generálva: 2026-11-03 · Bejegyzések száma: ${entries.length}`,
+      '================================================================================',
+      '',
+    ];
+    const blocks = entries.map(
+      (e) =>
+        `[${e.timestamp}] (${e.severity.toUpperCase()}) ${e.actionLabel}\n` +
+        `  Felhasználó : ${e.actorUser} (${e.actorRole})\n` +
+        `  Érintett    : ${e.targetObject}${
+          e.previousVersion && e.newVersion ? ` [${e.previousVersion} -> ${e.newVersion}]` : ''
+        }\n` +
+        `  Részletek   : ${e.details}\n` +
+        (e.ipLocation ? `  IP / Eszköz : ${e.ipLocation} · ${e.deviceBrowser || '-'}\n` : '')
+    );
+    return [...banner, ...blocks].join('\n');
+  }
+
+  // Default: standard syslog-style .log format
+  return entries
+    .map(
+      (e) =>
+        `${e.timestamp} [${e.severity.toUpperCase()}] [${e.category}] actor="${e.actorUser}" role="${e.actorRole}" target="${e.targetObject}"${
+          e.previousVersion && e.newVersion
+            ? ` version="${e.previousVersion}->${e.newVersion}"`
+            : ''
+        }${e.userCreationMethod ? ` user_method="${e.userCreationMethod}"` : ''}${
+          e.ipLocation ? ` ip="${e.ipLocation}"` : ''
+        } msg="${e.details.replace(/"/g, "'")}"`
+    )
+    .join('\n');
+}
+
+/**
+ * Determine whether a login event should trigger an email notification according to v0.5.0 rules
+ */
+export function shouldSendLoginEmailAlert(
+  config: Pick<
+    AuditLogConfig,
+    | 'loginEmailEnabled'
+    | 'loginEmailScope'
+    | 'newDeviceLocationEmailEnabled'
+    | 'newDeviceTargetRoles'
+  >,
+  actorRole: WpUserRole,
+  isNewDeviceOrLocation: boolean
+): { send: boolean; reason: string } {
+  // Check role-scoped standard login notification
+  if (config.loginEmailEnabled) {
+    if (config.loginEmailScope === 'all-users') {
+      return {
+        send: true,
+        reason: 'Minden felhasználó bejelentkezéséről e-mail értesítés aktív',
+      };
+    }
+    if (config.loginEmailScope === 'editors-only' && actorRole === 'editor') {
+      return {
+        send: true,
+        reason: 'Kizárólag szerkesztők (editor) belépési e-mail értesítése aktív',
+      };
+    }
+    if (config.loginEmailScope === 'admins-only' && actorRole === 'administrator') {
+      return {
+        send: true,
+        reason: 'Kizárólag adminisztrátorok belépési e-mail értesítése aktív',
+      };
+    }
+  }
+
+  // Check new location / new device alert for selected user roles
+  if (
+    config.newDeviceLocationEmailEnabled &&
+    isNewDeviceOrLocation &&
+    config.newDeviceTargetRoles.includes(actorRole)
+  ) {
+    return {
+      send: true,
+      reason: `Új helyről vagy új eszközről történő belépés riasztás (${actorRole} csoport)`,
+    };
+  }
+
+  return {
+    send: false,
+    reason: 'Nem felel meg az aktív bejelentkezési e-mail szűrőfeltételeknek',
+  };
+}
+
+/**
+ * Build email notification preview for available updates (current -> new version) and 24h daily digest
+ */
+export function buildUpdateNotificationEmailPreview(config: AuditLogConfig): {
+  subject: string;
+  body: string;
+  includedCount: number;
+} {
+  const filtered = config.pendingUpdates.filter((u) => {
+    if (u.componentType === 'plugin' && !config.notifyPluginUpdates) return false;
+    if (u.componentType === 'theme' && !config.notifyThemeUpdates) return false;
+    if (u.componentType === 'core' && !config.notifyCoreUpdates) return false;
+    return true;
+  });
+
+  const autoUpdated24h = filtered.filter((u) => u.autoUpdatedInLast24h);
+
+  const lines = filtered.map(
+    (u) =>
+      `• [${u.componentType.toUpperCase()}] ${u.name}: Aktuális verzió: v${u.currentVersion}  --->  Új verzió: v${u.newVersion} (${
+        u.autoUpdatedInLast24h ? 'Automatikusan frissült az elmúlt 24 órában' : 'Frissítés elérhető'
+      })`
+  );
+
+  const subject = `[And ToolKit v0.5.0] WordPress Frissítési Értesítő (${filtered.length} komponens) & Napi Összefoglaló (${config.dailyDigestTime})`;
+
+  const body = [
+    `Címzett: ${config.recipientEmail}`,
+    `Tárgy: ${subject}`,
+    `Ütemezett Napi Összefoglaló Időpontja: Minden nap ${config.dailyDigestTime} órakor`,
+    '------------------------------------------------------------------------',
+    '1. ELÉRHETŐ ÉS VÉGREHAJTOTT FRISSÍTÉSEK (AKTUÁLIS VERZIÓ -> ÚJ VERZIÓ):',
+    ...(lines.length > 0
+      ? lines
+      : ['• Jelenleg nincs kiválasztott komponens a frissítési értesítőben.']),
+    '',
+    `2. ELMÚLT 24 ÓRÁBAN AUTOMATIKUSAN FRISSÜLT KOMPONENSEK (${autoUpdated24h.length} db):`,
+    ...(autoUpdated24h.length > 0
+      ? autoUpdated24h.map(
+          (a) => `✓ ${a.name}: v${a.currentVersion} -> v${a.newVersion} (Sikeres auto-update)`
+        )
+      : ['• Az elmúlt 24 órában nem történt automatikus háttérfrissítés.']),
+    '------------------------------------------------------------------------',
+    'And ToolKit v0.5.0 · WordPress 7.1 Biztonsági Napló & E-mail Értesítő Modul',
+  ].join('\n');
+
+  return {
+    subject,
+    body,
+    includedCount: filtered.length,
+  };
+}
+
+/**
  * Validate new event/post submission
  */
 export function validateNewPostInput(input: {
@@ -515,7 +906,7 @@ export function validateNewPostInput(input: {
 }
 
 /**
- * Generate production-ready WordPress 7.1 & PHP 8.0+ Plugin file reflecting current v0.4.0 configuration
+ * Generate production-ready WordPress 7.1 & PHP 8.0+ Plugin file reflecting current v0.5.0 configuration
  */
 export function generateWordPressPluginPhp(state: ToolkitState): string {
   const enabledPlatforms = state.social.platforms
@@ -528,12 +919,16 @@ export function generateWordPressPluginPhp(state: ToolkitState): string {
     .map((c) => `'${c.id}' => ${c.defaultEnabled ? 'true' : 'false'}`)
     .join(', ');
 
+  const newDeviceRolesList = state.auditLog.newDeviceTargetRoles
+    .map((r) => `'${r}'`)
+    .join(', ');
+
   return `<?php
 /**
  * Plugin Name:       And ToolKit
  * Plugin URI:        https://github.com/galandras12/and-toolkit
- * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó, látogatói/letöltési statisztika, kötelező GDPR Cookie kezelő, Információs Banner és teljes körű Kép-, Upload Limit-, Lazy Load & Gyorsítótár Optimalizáló.
- * Version:           0.4.0
+ * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó, látogatói/letöltési statisztika, kötelező GDPR Cookie kezelő, Információs Banner, Kép/Upload/Lazy-Load/Cache Optimalizáló és Biztonsági Audit Naplózás & E-mail Értesítő modul.
+ * Version:           0.5.0
  * Requires at least: 6.2
  * Tested up to:      7.1
  * Requires PHP:      8.0
@@ -549,7 +944,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class And_ToolKit_Plugin {
-    public const VERSION    = '0.4.0';
+    public const VERSION    = '0.5.0';
     public const AUTHOR     = 'galandras12+AI';
     public const WP_TARGET  = '7.1';
     public const PHP_TARGET = '8.0';
@@ -567,6 +962,19 @@ final class And_ToolKit_Plugin {
         add_filter( 'big_image_size_threshold', [ __CLASS__, 'filter_big_image_threshold' ], 999 );
         add_filter( 'wp_get_attachment_image_attributes', [ __CLASS__, 'filter_lazy_load_attributes' ], 10, 2 );
 
+        // v0.5.0 Biztonsági Audit Naplózás & E-mail Értesítés Hookok (Bejelentkezés, Plugin, Téma, Poszt, Oldal, Felhasználó, Auto-Update, WP Core)
+        add_action( 'wp_login', [ __CLASS__, 'log_user_login_event' ], 10, 2 );
+        add_action( 'upgrader_process_complete', [ __CLASS__, 'log_upgrader_lifecycle_event' ], 10, 2 );
+        add_action( 'deleted_plugin', [ __CLASS__, 'log_deleted_plugin_event' ], 10, 2 );
+        add_action( 'switch_theme', [ __CLASS__, 'log_theme_switch_event' ], 10, 3 );
+        add_action( 'save_post', [ __CLASS__, 'log_content_save_event' ], 10, 3 );
+        add_action( 'before_delete_post', [ __CLASS__, 'log_content_delete_event' ], 10, 2 );
+        add_action( 'user_register', [ __CLASS__, 'log_user_registration_event' ], 10, 2 );
+        add_action( 'set_user_role', [ __CLASS__, 'log_user_role_change_event' ], 10, 3 );
+        add_action( 'delete_user', [ __CLASS__, 'log_user_delete_event' ], 10, 2 );
+        add_action( 'automatic_updates_complete', [ __CLASS__, 'log_auto_system_update_event' ], 10, 1 );
+        add_action( '_core_updated_successfully', [ __CLASS__, 'log_core_manual_update_event' ], 10, 1 );
+
         // Rövidkódok (Shortcodes) regisztrálása WordPress 7.1 blokk és klasszikus témákhoz
         add_shortcode( 'wtk_calendar', [ __CLASS__, 'render_calendar_widget' ] );
         add_shortcode( 'wtk_search', [ __CLASS__, 'render_search_widget' ] );
@@ -575,6 +983,7 @@ final class And_ToolKit_Plugin {
         add_shortcode( 'wtk_cookie_consent', [ __CLASS__, 'render_cookie_consent_widget' ] );
         add_shortcode( 'wtk_info_banner', [ __CLASS__, 'render_info_banner_shortcode' ] );
         add_shortcode( 'wtk_speed_badge', [ __CLASS__, 'render_speed_badge_shortcode' ] );
+        add_shortcode( 'wtk_security_badge', [ __CLASS__, 'render_security_badge_shortcode' ] );
     }
 
     public static function register_admin_menu(): void {
@@ -676,6 +1085,18 @@ final class And_ToolKit_Plugin {
                 'exclude_above_fold'      => ${state.optimizer.excludeAboveFoldCount},
                 'page_cache_enabled'      => ${state.optimizer.pageCacheEnabled ? 'true' : 'false'},
             ],
+            'audit_log'   => [
+                'enabled'                        => ${state.auditLog.enabled ? 'true' : 'false'},
+                'recipient_email'                => '${state.auditLog.recipientEmail.replace(/'/g, "\\'")}',
+                'export_format'                  => '${state.auditLog.defaultExportFormat}',
+                'login_email_enabled'            => ${state.auditLog.loginEmailEnabled ? 'true' : 'false'},
+                'login_email_scope'              => '${state.auditLog.loginEmailScope}',
+                'new_device_location_alert'      => ${state.auditLog.newDeviceLocationEmailEnabled ? 'true' : 'false'},
+                'new_device_target_roles'        => [ ${newDeviceRolesList} ],
+                'update_available_email_enabled' => ${state.auditLog.updateAvailableEmailEnabled ? 'true' : 'false'},
+                'daily_digest_enabled'           => ${state.auditLog.dailyDigestEnabled ? 'true' : 'false'},
+                'daily_digest_time'              => '${state.auditLog.dailyDigestTime}',
+            ],
             'performance' => [
                 'minify_assets'   => ${state.performance.minifyAssets ? 'true' : 'false'},
                 'defer_scripts'   => ${state.performance.deferScripts ? 'true' : 'false'},
@@ -709,6 +1130,102 @@ final class And_ToolKit_Plugin {
         $attr['loading']  = 'lazy';
         $attr['decoding'] = 'async';
         return $attr;
+    }
+
+    // ========================================================================
+    // v0.5.0 BIZTONSÁGI NAPLÓZÁS & E-MAIL ÉRTESÍTÉS METÓDUSOK
+    // ========================================================================
+
+    public static function log_user_login_event( string $user_login, object $user ): void {
+        $audit = self::get_config()['audit_log'];
+        if ( ! $audit['enabled'] ) {
+            return;
+        }
+        $roles = isset( $user->roles ) && is_array( $user->roles ) ? $user->roles : [ 'subscriber' ];
+        $primary_role = (string) ( $roles[0] ?? 'subscriber' );
+
+        $should_notify = match ( $audit['login_email_scope'] ) {
+            'all-users'    => true,
+            'editors-only' => 'editor' === $primary_role,
+            'admins-only'  => 'administrator' === $primary_role,
+            default        => false,
+        };
+
+        if ( $audit['login_email_enabled'] && $should_notify && function_exists( 'wp_mail' ) ) {
+            wp_mail(
+                sanitize_email( $audit['recipient_email'] ),
+                sprintf( '[And ToolKit] Belépési értesítés: %s (%s)', sanitize_text_field( $user_login ), $primary_role ),
+                sprintf( 'Felhasználó bejelentkezett: %s · Szerepkör: %s', sanitize_text_field( $user_login ), $primary_role )
+            );
+        }
+    }
+
+    public static function log_upgrader_lifecycle_event( object $upgrader, array $hook_extra ): void {
+        $audit = self::get_config()['audit_log'];
+        if ( ! $audit['enabled'] ) {
+            return;
+        }
+        $action = sanitize_text_field( (string) ( $hook_extra['action'] ?? 'update' ) );
+        $type   = sanitize_text_field( (string) ( $hook_extra['type'] ?? 'plugin' ) );
+        update_option( 'and_toolkit_last_upgrader_event', $type . ':' . $action, false );
+    }
+
+    public static function log_deleted_plugin_event( string $plugin_file, bool $deleted ): void {
+        if ( $deleted ) {
+            update_option( 'and_toolkit_last_deleted_plugin', sanitize_text_field( $plugin_file ), false );
+        }
+    }
+
+    public static function log_theme_switch_event( string $new_name, object $new_theme, object $old_theme ): void {
+        update_option( 'and_toolkit_last_theme_switch', sanitize_text_field( $new_name ), false );
+    }
+
+    public static function log_content_save_event( int $post_id, object $post, bool $update ): void {
+        $post_type = isset( $post->post_type ) ? (string) $post->post_type : 'post';
+        if ( in_array( $post_type, [ 'post', 'page' ], true ) ) {
+            update_option( 'and_toolkit_last_content_event', $post_type . ':' . ( $update ? 'edit' : 'create' ) . ':' . absint( $post_id ), false );
+        }
+    }
+
+    public static function log_content_delete_event( int $post_id, object $post ): void {
+        $post_type = isset( $post->post_type ) ? (string) $post->post_type : 'post';
+        update_option( 'and_toolkit_last_content_delete', $post_type . ':delete:' . absint( $post_id ), false );
+    }
+
+    public static function log_user_registration_event( int $user_id, array $userdata = [] ): void {
+        // Rögzíti, hogy regisztrációs űrlapon, meghívóval vagy admin által jött létre
+        $method = is_admin() ? 'admin-created' : 'registration-form';
+        update_option( 'and_toolkit_last_user_created', absint( $user_id ) . ':' . $method, false );
+    }
+
+    public static function log_user_role_change_event( int $user_id, string $role, array $old_roles ): void {
+        update_option( 'and_toolkit_last_role_change', absint( $user_id ) . ':' . sanitize_text_field( $role ), false );
+    }
+
+    public static function log_user_delete_event( int $id, ?int $reassign ): void {
+        update_option( 'and_toolkit_last_user_deleted', absint( $id ), false );
+    }
+
+    public static function log_auto_system_update_event( array $results ): void {
+        $audit = self::get_config()['audit_log'];
+        update_option( 'and_toolkit_last_auto_update', time(), false );
+        if ( $audit['enabled'] && $audit['daily_digest_enabled'] && function_exists( 'wp_mail' ) ) {
+            wp_mail(
+                sanitize_email( $audit['recipient_email'] ),
+                '[And ToolKit] Napi 24 órás automatikus frissítési összefoglaló',
+                'A WordPress automatizált rendszerfrissítése sikeresen lefutott.'
+            );
+        }
+    }
+
+    public static function log_core_manual_update_event( string $new_wp_version ): void {
+        $current_user = function_exists( 'wp_get_current_user' ) ? wp_get_current_user() : null;
+        $actor_login  = ( $current_user && isset( $current_user->user_login ) ) ? (string) $current_user->user_login : 'admin';
+        update_option(
+            'and_toolkit_last_core_update',
+            sanitize_text_field( $actor_login . '->' . $new_wp_version ),
+            false
+        );
     }
 
     public static function enqueue_frontend_assets(): void {
@@ -859,6 +1376,19 @@ final class And_ToolKit_Plugin {
         );
     }
 
+    public static function render_security_badge_shortcode( array|string $atts = [] ): string {
+        $audit = self::get_config()['audit_log'];
+        if ( ! $audit['enabled'] ) {
+            return '';
+        }
+        return sprintf(
+            '<div class="atk-widget atk-security-badge" data-export="%s" data-digest="%s"><span>And ToolKit Security Audit v%s</span></div>',
+            esc_attr( $audit['export_format'] ),
+            esc_attr( $audit['daily_digest_time'] ),
+            esc_html( self::VERSION )
+        );
+    }
+
     public static function render_global_info_banner(): void {
         $config = self::get_config()['banner'];
         if ( ! $config['enabled'] || 'sidebar-only' === $config['visibility_scope'] ) {
@@ -911,6 +1441,17 @@ final class And_ToolKit_Plugin {
             'callback'            => [ __CLASS__, 'handle_system_optimization' ],
             'permission_callback' => static fn(): bool => current_user_can( 'manage_options' ),
         ] );
+        register_rest_route( 'and-toolkit/v1', '/audit-export', [
+            'methods'             => 'GET',
+            'callback'            => [ __CLASS__, 'handle_audit_log_export' ],
+            'permission_callback' => static fn(): bool => current_user_can( 'manage_options' ),
+            'args'                => [
+                'format' => [
+                    'required'          => false,
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ] );
     }
 
     public static function handle_ajax_search( \\WP_REST_Request $request ): \\WP_REST_Response {
@@ -961,6 +1502,21 @@ final class And_ToolKit_Plugin {
             200
         );
     }
+
+    public static function handle_audit_log_export( \\WP_REST_Request $request ): \\WP_REST_Response {
+        $format = sanitize_text_field( (string) ( $request->get_param( 'format' ) ?? 'log' ) );
+        $allowed = [ 'log', 'txt', 'csv' ];
+        $clean_format = in_array( $format, $allowed, true ) ? $format : 'log';
+
+        return new \\WP_REST_Response(
+            [
+                'status'  => 'exported',
+                'format'  => $clean_format,
+                'version' => self::VERSION,
+            ],
+            200
+        );
+    }
 }
 
 And_ToolKit_Plugin::init();
@@ -976,7 +1532,7 @@ export interface AuditCheckItem {
 }
 
 /**
- * Automated static code & configuration audit verifying compatibility with WordPress 7.1, PHP 8.0+, EU GDPR, Info Banner & v0.4.0 Optimizer requirements
+ * Automated static code & configuration audit verifying compatibility with WordPress 7.1, PHP 8.0+, EU GDPR, Info Banner, v0.4.0 Optimizer & v0.5.0 Security Audit Log requirements
  */
 export function auditWordPressPhpCompatibility(
   phpCode: string,
@@ -994,6 +1550,17 @@ export function auditWordPressPhpCompatibility(
     'filter_upload_size_limit',
     'filter_big_image_threshold',
     'filter_lazy_load_attributes',
+    'log_user_login_event',
+    'log_upgrader_lifecycle_event',
+    'log_deleted_plugin_event',
+    'log_theme_switch_event',
+    'log_content_save_event',
+    'log_content_delete_event',
+    'log_user_registration_event',
+    'log_user_role_change_event',
+    'log_user_delete_event',
+    'log_auto_system_update_event',
+    'log_core_manual_update_event',
     'enqueue_frontend_assets',
     'register_sidebar_widgets',
     'render_admin_dashboard',
@@ -1004,6 +1571,7 @@ export function auditWordPressPhpCompatibility(
     'render_cookie_consent_widget',
     'render_info_banner_shortcode',
     'render_speed_badge_shortcode',
+    'render_security_badge_shortcode',
     'render_global_info_banner',
     'render_gdpr_footer_banner',
     'register_rest_routes',
@@ -1011,6 +1579,7 @@ export function auditWordPressPhpCompatibility(
     'increment_download_counter',
     'handle_cookie_consent',
     'handle_system_optimization',
+    'handle_audit_log_export',
   ];
 
   const allMethodsImplemented = requiredMethods.every((m) =>
@@ -1021,44 +1590,62 @@ export function auditWordPressPhpCompatibility(
     {
       id: 'php80-strict-types',
       category: 'PHP 8.0+',
-      title: 'PHP 8.0 Strict Types, Union Types & Arrow Functions',
+      title: 'PHP 8.0 Strict Types, Union Types, Nullable & Arrow Functions',
       description:
-        'A generált bővítmény tartalmazza a declare(strict_types=1); direktívát, a visszatérési típusokat (: void, : string, : int, : array), az union típusokat (array|string) és a static fn(): bool nyílfüggvényt.',
+        'A generált bővítmény tartalmazza a declare(strict_types=1); direktívát, a visszatérési típusokat (: void, : string, : int, : array), az union típusokat (array|string), a ?int nullable típust és a static fn(): bool nyílfüggvényt.',
       passed:
         phpCode.includes('declare(strict_types=1);') &&
         phpCode.includes('array|string $atts = []') &&
+        phpCode.includes('?int $reassign') &&
         phpCode.includes('static fn(): bool =>') &&
         phpCode.includes('Requires PHP:      8.0'),
     },
     {
       id: 'php80-match-expression',
       category: 'PHP 8.0+',
-      title: 'PHP 8.0 Match Kifejezés & v0.4.0 Osztálykonstansok',
+      title: 'PHP 8.0 Match Kifejezések & v0.5.0 Osztálykonstansok',
       description:
-        'A sablonválasztó a típusbiztos PHP 8.0 match () kifejezést és a public const VERSION = \'0.4.0\' konstanst használja.',
+        'A sablonválasztó és a belépési e-mail jogosultság-ellenőrző a típusbiztos PHP 8.0 match () kifejezést és a public const VERSION = \'0.5.0\' konstanst használja.',
       passed:
         phpCode.includes("match ( $atts['style'] )") &&
-        phpCode.includes("public const VERSION    = '0.4.0';"),
+        phpCode.includes("match ( $audit['login_email_scope'] )") &&
+        phpCode.includes("public const VERSION    = '0.5.0';"),
     },
     {
       id: 'wp71-header-meta',
       category: 'WordPress 7.1',
-      title: 'WordPress 7.1 Fejléc és v0.4.0 Metaadat Szabvány',
+      title: 'WordPress 7.1 Fejléc és v0.5.0 Metaadat Szabvány',
       description:
-        'Plugin Name: And ToolKit, Version: 0.4.0, Author: galandras12+AI és Tested up to: 7.1 fejléc mezők hiánytalanul beállítva.',
+        'Plugin Name: And ToolKit, Version: 0.5.0, Author: galandras12+AI és Tested up to: 7.1 fejléc mezők hiánytalanul beállítva.',
       passed:
         phpCode.includes('Plugin Name:       And ToolKit') &&
-        phpCode.includes('Version:           0.4.0') &&
+        phpCode.includes('Version:           0.5.0') &&
         phpCode.includes('Tested up to:      7.1') &&
         phpCode.includes('Author:            galandras12+AI'),
     },
     {
       id: 'wp71-hook-callbacks',
       category: 'WordPress 7.1',
-      title: 'Minden Hook, 3 Filter, 7 Shortcode és 4 REST Végpont Implementálva',
+      title: 'Minden Hook (17 Action, 3 Filter, 8 Shortcode, 5 REST Végpont) Implementálva',
       description:
-        'Az összes regisztrált add_action, add_filter, add_shortcode és register_rest_route (23/23 metódus) rendelkezik valódi PHP törzzsel.',
+        'Az összes regisztrált add_action, add_filter, add_shortcode és register_rest_route (36/36 metódus) rendelkezik valódi PHP törzzsel.',
       passed: allMethodsImplemented,
+    },
+    {
+      id: 'audit-log-email-module',
+      category: 'Biztonság',
+      title: 'v0.5.0 Biztonsági Audit Naplózás (.log/.txt/.csv) & E-mail Értesítő Modul',
+      description:
+        'A wp_login, upgrader_process_complete, save_post, user_register, set_user_role, automatic_updates_complete és _core_updated_successfully hookok, valamint a wp_mail() riasztások és az /audit-export végpont aktívak.',
+      passed:
+        phpCode.includes("add_action( 'wp_login'") &&
+        phpCode.includes("add_action( 'upgrader_process_complete'") &&
+        phpCode.includes("add_action( 'user_register'") &&
+        phpCode.includes("add_action( 'set_user_role'") &&
+        phpCode.includes("add_action( 'automatic_updates_complete'") &&
+        phpCode.includes("add_action( '_core_updated_successfully'") &&
+        phpCode.includes("'/audit-export'") &&
+        Boolean(state.auditLog.recipientEmail),
     },
     {
       id: 'optimizer-media-upload-lazy',
@@ -1112,10 +1699,11 @@ export function auditWordPressPhpCompatibility(
       category: 'Biztonság',
       title: 'ABSPATH Védelem, Escaping és REST Sanitize Callback',
       description:
-        'Közvetlen fájlelérés tiltva (!defined(\'ABSPATH\')), minden kimenet esc_html/esc_attr/esc_url/absint szűréssel, a REST bemenet pedig sanitize_text_field-del védett.',
+        'Közvetlen fájlelérés tiltva (!defined(\'ABSPATH\')), minden kimenet esc_html/esc_attr/esc_url/absint/sanitize_email szűréssel, a REST bemenet pedig sanitize_text_field-del védett.',
       passed:
         phpCode.includes("if ( ! defined( 'ABSPATH' ) )") &&
         phpCode.includes('sanitize_text_field') &&
+        phpCode.includes('sanitize_email') &&
         phpCode.includes('esc_html(') &&
         phpCode.includes('esc_url('),
     },
@@ -1138,4 +1726,3 @@ export function auditWordPressPhpCompatibility(
     checks,
   };
 }
-

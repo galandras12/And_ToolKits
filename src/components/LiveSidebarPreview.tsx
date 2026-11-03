@@ -13,6 +13,7 @@ import {
   Share2,
   ShieldCheck,
   Smartphone,
+  Terminal,
   TrendingUp,
   Users,
   X,
@@ -1253,6 +1254,59 @@ export const LiveSidebarPreview: React.FC<LiveSidebarPreviewProps> = ({
                   </button>
                 )}
               </div>
+            </section>
+          )}
+
+          {/* 7. SECURITY AUDIT LOG & EMAIL ALERT WIDGET ([wtk_security_badge] · v0.5.0) */}
+          {state.auditLog.enabled && state.auditLog.showSidebarAuditWidget && (
+            <section
+              aria-label="Biztonsági Napló és E-mail Értesítő Widget Előnézet"
+              className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-2.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Terminal className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Biztonsági Audit &amp; E-mail Őr
+                  </h3>
+                </div>
+                <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+                  [wtk_security_badge]
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 rounded bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                  <div className="text-xs font-mono font-bold text-slate-900 dark:text-slate-100">
+                    {state.auditLog.entries.length} db
+                  </div>
+                  <div className="text-[10px] text-slate-500">Naplózott esemény</div>
+                </div>
+                <div className="p-2 rounded bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                  <div className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
+                    .{state.auditLog.defaultExportFormat.toUpperCase()}
+                  </div>
+                  <div className="text-[10px] text-slate-500">Napló formátum</div>
+                </div>
+                <div className="p-2 rounded bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                  <div className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    {state.auditLog.dailyDigestTime}
+                  </div>
+                  <div className="text-[10px] text-slate-500">24h Összefoglaló</div>
+                </div>
+              </div>
+
+              {state.auditLog.entries[0] && (
+                <div className="p-2 rounded bg-slate-50 dark:bg-slate-900/80 border border-slate-200/70 dark:border-slate-800 text-[11px] space-y-0.5">
+                  <div className="flex items-center justify-between font-mono text-[10px] text-slate-400">
+                    <span>Legutóbbi esemény:</span>
+                    <span>{state.auditLog.entries[0].timestamp.slice(11)}</span>
+                  </div>
+                  <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                    {state.auditLog.entries[0].actionLabel} · {state.auditLog.entries[0].actorUser}
+                  </div>
+                </div>
+              )}
             </section>
           )}
         </div>

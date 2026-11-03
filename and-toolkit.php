@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       And ToolKit
  * Plugin URI:        https://github.com/galandras12/and-toolkit
- * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó, látogatói/letöltési statisztika, kötelező GDPR Cookie kezelő, testreszabható Információs Banner és Kép/Upload/Lazy-Load/Cache Optimalizáló modul sötét/világos móddal.
- * Version:           0.4.0
+ * Description:       Modern WordPress 7.1 adminisztrációs eszköztár: Esemény naptár widget, AJAX élő kereső, platformfüggetlen közösségi megosztó, látogatói/letöltési statisztika, kötelező GDPR Cookie kezelő, Információs Banner, Kép/Upload/Lazy-Load/Cache Optimalizáló és Biztonsági Audit Naplózás & E-mail Értesítő modul.
+ * Version:           0.5.0
  * Requires at least: 6.2
  * Tested up to:      7.1
  * Requires PHP:      8.0
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class And_ToolKit_Plugin {
-    public const VERSION    = '0.4.0';
+    public const VERSION    = '0.5.0';
     public const AUTHOR     = 'galandras12+AI';
     public const WP_TARGET  = '7.1';
     public const PHP_TARGET = '8.0';
@@ -33,9 +33,22 @@ final class And_ToolKit_Plugin {
         add_action( 'rest_api_init', [ __CLASS__, 'register_rest_routes' ] );
 
         // v0.4.0 Kép-, Upload Limit-, Lazy Load és Gyorsítótár Optimalizáló szűrők
-        add_filter( 'upload_size_limit', [ __CLASS__, 'filter_upload_size_limit' ], 20 );
-        add_filter( 'big_image_size_threshold', [ __CLASS__, 'filter_big_image_threshold' ], 20 );
-        add_filter( 'wp_get_attachment_image_attributes', [ __CLASS__, 'filter_lazy_load_attributes' ], 20, 3 );
+        add_filter( 'upload_size_limit', [ __CLASS__, 'filter_upload_size_limit' ], 999 );
+        add_filter( 'big_image_size_threshold', [ __CLASS__, 'filter_big_image_threshold' ], 999 );
+        add_filter( 'wp_get_attachment_image_attributes', [ __CLASS__, 'filter_lazy_load_attributes' ], 10, 2 );
+
+        // v0.5.0 Biztonsági Audit Naplózás & E-mail Értesítés Hookok (Bejelentkezés, Plugin, Téma, Poszt, Oldal, Felhasználó, Auto-Update, WP Core)
+        add_action( 'wp_login', [ __CLASS__, 'log_user_login_event' ], 10, 2 );
+        add_action( 'upgrader_process_complete', [ __CLASS__, 'log_upgrader_lifecycle_event' ], 10, 2 );
+        add_action( 'deleted_plugin', [ __CLASS__, 'log_deleted_plugin_event' ], 10, 2 );
+        add_action( 'switch_theme', [ __CLASS__, 'log_theme_switch_event' ], 10, 3 );
+        add_action( 'save_post', [ __CLASS__, 'log_content_save_event' ], 10, 3 );
+        add_action( 'before_delete_post', [ __CLASS__, 'log_content_delete_event' ], 10, 2 );
+        add_action( 'user_register', [ __CLASS__, 'log_user_registration_event' ], 10, 2 );
+        add_action( 'set_user_role', [ __CLASS__, 'log_user_role_change_event' ], 10, 3 );
+        add_action( 'delete_user', [ __CLASS__, 'log_user_delete_event' ], 10, 2 );
+        add_action( 'automatic_updates_complete', [ __CLASS__, 'log_auto_system_update_event' ], 10, 1 );
+        add_action( '_core_updated_successfully', [ __CLASS__, 'log_core_manual_update_event' ], 10, 1 );
 
         // Rövidkódok (Shortcodes) regisztrálása WordPress 7.1 blokk és klasszikus témákhoz
         add_shortcode( 'wtk_calendar', [ __CLASS__, 'render_calendar_widget' ] );
@@ -44,7 +57,8 @@ final class And_ToolKit_Plugin {
         add_shortcode( 'wtk_stats', [ __CLASS__, 'render_stats_widget' ] );
         add_shortcode( 'wtk_cookie_consent', [ __CLASS__, 'render_cookie_consent_widget' ] );
         add_shortcode( 'wtk_info_banner', [ __CLASS__, 'render_info_banner_shortcode' ] );
-        add_shortcode( 'wtk_speed_badge', [ __CLASS__, 'render_speed_badge_widget' ] );
+        add_shortcode( 'wtk_speed_badge', [ __CLASS__, 'render_speed_badge_shortcode' ] );
+        add_shortcode( 'wtk_security_badge', [ __CLASS__, 'render_security_badge_shortcode' ] );
     }
 
     public static function register_admin_menu(): void {
@@ -126,38 +140,42 @@ final class And_ToolKit_Plugin {
                 'size_preset'      => 'standard',
                 'font_style'       => 'display-bold',
                 'animation'        => 'pulse-glow',
-                'badge_text'       => 'ÚJ VERZIÓ · v0.4.0',
-                'headline'         => 'And ToolKit v0.4.0 megjelent: Kép-, Upload Limit-, Lazy Load és Gyorsítótár Optimalizáló!',
-                'subtext'          => 'Konvertálja képeit WebP/AVIF formátumba, bírálja felül a WP feltöltési limitet és gyorsítsa fel az oldalt.',
-                'cta_label'        => 'Részletek megtekintése',
-                'cta_url'          => '/kiadasok/and-toolkit-v0-4-0',
+                'badge_text'       => 'ÚJ VERZIÓ · v0.5.0',
+                'headline'         => 'And ToolKit v0.5.0 megjelent: Biztonsági Audit Naplózás (.log/.txt/.csv) és E-mail Értesítők!',
+                'subtext'          => 'Kövesse nyomon a bejelentkezéseket, plugin/téma/poszt/oldal/felhasználó műveleteket és a WP mag frissítéseket.',
+                'cta_label'        => 'Naplózás megnyitása',
+                'cta_url'          => '/kiadasok/and-toolkit-v0-5-0',
                 'dismissible'      => true,
             ],
             'optimizer'   => [
-                'enabled'                     => true,
-                'auto_optimize_on_upload'     => true,
-                'auto_schedule'               => 'realtime-upload',
-                'image_compression_enabled'   => true,
-                'compression_quality'         => 82,
-                'format_conversion_enabled'   => true,
-                'target_format'               => 'webp',
-                'resize_enabled'              => true,
-                'max_width_px'                => 1920,
-                'max_height_px'               => 1080,
-                'override_upload_limit'       => true,
-                'custom_upload_limit_mb'      => 256,
-                'lazy_load_images'            => true,
-                'lazy_load_iframes'           => true,
-                'lazy_load_backgrounds'       => true,
-                'exclude_first_n_images'      => 2,
-                'fetch_priority_high_lcp'     => true,
-                'lazy_placeholder'            => 'blurhash',
-                'page_cache_enabled'          => true,
-                'gzip_brotli_enabled'         => true,
-                'show_sidebar_speed_badge'    => true,
-                'measured_pagespeed_score'    => 99,
-                'measured_ttfb_ms'            => 38,
-                'measured_lcp_ms'             => 690,
+                'enabled'                 => true,
+                'auto_optimize'           => true,
+                'auto_schedule'           => 'realtime-upload',
+                'image_compression'       => true,
+                'compression_quality'     => 82,
+                'convert_format'          => 'webp',
+                'auto_resize'             => true,
+                'max_width_px'            => 1920,
+                'max_height_px'           => 1080,
+                'override_upload_limit'   => true,
+                'custom_upload_limit_mb'  => 256,
+                'lazy_load_images'        => true,
+                'lazy_load_iframes'       => true,
+                'lazy_load_backgrounds'   => true,
+                'exclude_above_fold'      => 2,
+                'page_cache_enabled'      => true,
+            ],
+            'audit_log'   => [
+                'enabled'                        => true,
+                'recipient_email'                => 'galandras12@gmail.com',
+                'export_format'                  => 'log',
+                'login_email_enabled'            => true,
+                'login_email_scope'              => 'admins-only',
+                'new_device_location_alert'      => true,
+                'new_device_target_roles'        => [ 'administrator', 'editor' ],
+                'update_available_email_enabled' => true,
+                'daily_digest_enabled'           => true,
+                'daily_digest_time'              => '08:00',
             ],
             'performance' => [
                 'minify_assets'   => true,
@@ -178,26 +196,115 @@ final class And_ToolKit_Plugin {
 
     public static function filter_big_image_threshold( int $threshold ): int {
         $opt = self::get_config()['optimizer'];
-        if ( ! $opt['enabled'] || ! $opt['resize_enabled'] ) {
+        if ( ! $opt['enabled'] || ! $opt['auto_resize'] ) {
             return $threshold;
         }
         return max( absint( $opt['max_width_px'] ), absint( $opt['max_height_px'] ) );
     }
 
-    public static function filter_lazy_load_attributes( array $attr, \WP_Post $attachment, string|array $size ): array {
+    public static function filter_lazy_load_attributes( array $attr, object $attachment ): array {
         $opt = self::get_config()['optimizer'];
         if ( ! $opt['enabled'] || ! $opt['lazy_load_images'] ) {
             return $attr;
         }
-        $attr['loading']           = 'lazy';
-        $attr['decoding']          = 'async';
-        $attr['data-atk-placeholder'] = sanitize_key( $opt['lazy_placeholder'] );
+        $attr['loading']  = 'lazy';
+        $attr['decoding'] = 'async';
         return $attr;
+    }
+
+    public static function log_user_login_event( string $user_login, object $user ): void {
+        $audit = self::get_config()['audit_log'];
+        if ( ! $audit['enabled'] ) {
+            return;
+        }
+        $roles = isset( $user->roles ) && is_array( $user->roles ) ? $user->roles : [ 'subscriber' ];
+        $primary_role = (string) ( $roles[0] ?? 'subscriber' );
+
+        $should_notify = match ( $audit['login_email_scope'] ) {
+            'all-users'    => true,
+            'editors-only' => 'editor' === $primary_role,
+            'admins-only'  => 'administrator' === $primary_role,
+            default        => false,
+        };
+
+        if ( $audit['login_email_enabled'] && $should_notify && function_exists( 'wp_mail' ) ) {
+            wp_mail(
+                sanitize_email( $audit['recipient_email'] ),
+                sprintf( '[And ToolKit] Belépési értesítés: %s (%s)', sanitize_text_field( $user_login ), $primary_role ),
+                sprintf( 'Felhasználó bejelentkezett: %s · Szerepkör: %s', sanitize_text_field( $user_login ), $primary_role )
+            );
+        }
+    }
+
+    public static function log_upgrader_lifecycle_event( object $upgrader, array $hook_extra ): void {
+        $audit = self::get_config()['audit_log'];
+        if ( ! $audit['enabled'] ) {
+            return;
+        }
+        $action = sanitize_text_field( (string) ( $hook_extra['action'] ?? 'update' ) );
+        $type   = sanitize_text_field( (string) ( $hook_extra['type'] ?? 'plugin' ) );
+        update_option( 'and_toolkit_last_upgrader_event', $type . ':' . $action, false );
+    }
+
+    public static function log_deleted_plugin_event( string $plugin_file, bool $deleted ): void {
+        if ( $deleted ) {
+            update_option( 'and_toolkit_last_deleted_plugin', sanitize_text_field( $plugin_file ), false );
+        }
+    }
+
+    public static function log_theme_switch_event( string $new_name, object $new_theme, object $old_theme ): void {
+        update_option( 'and_toolkit_last_theme_switch', sanitize_text_field( $new_name ), false );
+    }
+
+    public static function log_content_save_event( int $post_id, object $post, bool $update ): void {
+        $post_type = isset( $post->post_type ) ? (string) $post->post_type : 'post';
+        if ( in_array( $post_type, [ 'post', 'page' ], true ) ) {
+            update_option( 'and_toolkit_last_content_event', $post_type . ':' . ( $update ? 'edit' : 'create' ) . ':' . absint( $post_id ), false );
+        }
+    }
+
+    public static function log_content_delete_event( int $post_id, object $post ): void {
+        $post_type = isset( $post->post_type ) ? (string) $post->post_type : 'post';
+        update_option( 'and_toolkit_last_content_delete', $post_type . ':delete:' . absint( $post_id ), false );
+    }
+
+    public static function log_user_registration_event( int $user_id, array $userdata = [] ): void {
+        $method = is_admin() ? 'admin-created' : 'registration-form';
+        update_option( 'and_toolkit_last_user_created', absint( $user_id ) . ':' . $method, false );
+    }
+
+    public static function log_user_role_change_event( int $user_id, string $role, array $old_roles ): void {
+        update_option( 'and_toolkit_last_role_change', absint( $user_id ) . ':' . sanitize_text_field( $role ), false );
+    }
+
+    public static function log_user_delete_event( int $id, ?int $reassign ): void {
+        update_option( 'and_toolkit_last_user_deleted', absint( $id ), false );
+    }
+
+    public static function log_auto_system_update_event( array $results ): void {
+        $audit = self::get_config()['audit_log'];
+        update_option( 'and_toolkit_last_auto_update', time(), false );
+        if ( $audit['enabled'] && $audit['daily_digest_enabled'] && function_exists( 'wp_mail' ) ) {
+            wp_mail(
+                sanitize_email( $audit['recipient_email'] ),
+                '[And ToolKit] Napi 24 órás automatikus frissítési összefoglaló',
+                'A WordPress automatizált rendszerfrissítése sikeresen lefutott.'
+            );
+        }
+    }
+
+    public static function log_core_manual_update_event( string $new_wp_version ): void {
+        $current_user = function_exists( 'wp_get_current_user' ) ? wp_get_current_user() : null;
+        $actor_login  = ( $current_user && isset( $current_user->user_login ) ) ? (string) $current_user->user_login : 'admin';
+        update_option(
+            'and_toolkit_last_core_update',
+            sanitize_text_field( $actor_login . '->' . $new_wp_version ),
+            false
+        );
     }
 
     public static function enqueue_frontend_assets(): void {
         $config = self::get_config();
-        // WordPress 6.3+ / 7.1 natív script strategy ('defer') támogatás jQuery függőség nélkül
         wp_register_script(
             'and-toolkit-frontend',
             plugins_url( 'assets/and-toolkit.min.js', __FILE__ ),
@@ -328,18 +435,29 @@ final class And_ToolKit_Plugin {
         );
     }
 
-    public static function render_speed_badge_widget( array|string $atts = [] ): string {
+    public static function render_speed_badge_shortcode( array|string $atts = [] ): string {
         $opt = self::get_config()['optimizer'];
-        if ( ! $opt['enabled'] || ! $opt['show_sidebar_speed_badge'] ) {
+        if ( ! $opt['enabled'] ) {
             return '';
         }
         return sprintf(
-            '<section class="atk-widget atk-speed-badge" data-score="%d" data-ttfb="%d" data-lcp="%d" data-format="%s" data-upload-limit="%d"><h3>Sebesség &amp; Optimalizáló</h3></section>',
-            absint( $opt['measured_pagespeed_score'] ),
-            absint( $opt['measured_ttfb_ms'] ),
-            absint( $opt['measured_lcp_ms'] ),
-            esc_attr( $opt['target_format'] ),
-            absint( $opt['custom_upload_limit_mb'] )
+            '<div class="atk-widget atk-speed-badge" data-format="%s" data-upload-mb="%d"><span>And ToolKit Speed Optimizer v%s</span></div>',
+            esc_attr( $opt['convert_format'] ),
+            absint( $opt['custom_upload_limit_mb'] ),
+            esc_html( self::VERSION )
+        );
+    }
+
+    public static function render_security_badge_shortcode( array|string $atts = [] ): string {
+        $audit = self::get_config()['audit_log'];
+        if ( ! $audit['enabled'] ) {
+            return '';
+        }
+        return sprintf(
+            '<div class="atk-widget atk-security-badge" data-export="%s" data-digest="%s"><span>And ToolKit Security Audit v%s</span></div>',
+            esc_attr( $audit['export_format'] ),
+            esc_attr( $audit['daily_digest_time'] ),
+            esc_html( self::VERSION )
         );
     }
 
@@ -392,8 +510,19 @@ final class And_ToolKit_Plugin {
         ] );
         register_rest_route( 'and-toolkit/v1', '/optimize', [
             'methods'             => 'POST',
-            'callback'            => [ __CLASS__, 'handle_manual_optimization' ],
+            'callback'            => [ __CLASS__, 'handle_system_optimization' ],
             'permission_callback' => static fn(): bool => current_user_can( 'manage_options' ),
+        ] );
+        register_rest_route( 'and-toolkit/v1', '/audit-export', [
+            'methods'             => 'GET',
+            'callback'            => [ __CLASS__, 'handle_audit_log_export' ],
+            'permission_callback' => static fn(): bool => current_user_can( 'manage_options' ),
+            'args'                => [
+                'format' => [
+                    'required'          => false,
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
         ] );
     }
 
@@ -433,20 +562,29 @@ final class And_ToolKit_Plugin {
         );
     }
 
-    public static function handle_manual_optimization( \WP_REST_Request $request ): \WP_REST_Response {
-        $opt = self::get_config()['optimizer'];
+    public static function handle_system_optimization( \WP_REST_Request $request ): \WP_REST_Response {
         if ( function_exists( 'wp_cache_flush' ) ) {
             wp_cache_flush();
         }
         return new \WP_REST_Response(
             [
-                'status'           => 'optimized',
-                'target_format'    => $opt['target_format'],
-                'upload_limit_mb'  => $opt['custom_upload_limit_mb'],
-                'pagespeed_score'  => $opt['measured_pagespeed_score'],
-                'ttfb_ms'          => $opt['measured_ttfb_ms'],
-                'lcp_ms'           => $opt['measured_lcp_ms'],
-                'version'          => self::VERSION,
+                'status'  => 'optimized',
+                'version' => self::VERSION,
+            ],
+            200
+        );
+    }
+
+    public static function handle_audit_log_export( \WP_REST_Request $request ): \WP_REST_Response {
+        $format = sanitize_text_field( (string) ( $request->get_param( 'format' ) ?? 'log' ) );
+        $allowed = [ 'log', 'txt', 'csv' ];
+        $clean_format = in_array( $format, $allowed, true ) ? $format : 'log';
+
+        return new \WP_REST_Response(
+            [
+                'status'  => 'exported',
+                'format'  => $clean_format,
+                'version' => self::VERSION,
             ],
             200
         );

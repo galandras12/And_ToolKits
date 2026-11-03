@@ -12,15 +12,17 @@ import {
   Share2,
   ShieldCheck,
   Sun,
+  Terminal,
   Zap,
 } from 'lucide-react';
 import {
   ActiveTab,
+  AuditLogConfig,
+  AuditLogEntry,
   BannerConfig,
   CalendarConfig,
   GdprCategoryId,
   GdprConfig,
-  MediaOptimizationItem,
   OptimizerConfig,
   PerformanceConfig,
   ScheduledPostItem,
@@ -30,7 +32,11 @@ import {
   StatsConfig,
   ToolkitState,
 } from './types/toolkit';
-import { INITIAL_STATE, calculatePerformanceMetrics } from './utils/toolkitLogic';
+import {
+  INITIAL_AUDIT_ENTRIES,
+  INITIAL_STATE,
+  calculatePerformanceMetrics,
+} from './utils/toolkitLogic';
 import { LiveSidebarPreview } from './components/LiveSidebarPreview';
 import { CalendarModulePanel } from './components/CalendarModulePanel';
 import { SearchModulePanel } from './components/SearchModulePanel';
@@ -39,10 +45,11 @@ import { StatsModulePanel } from './components/StatsModulePanel';
 import { GdprCookieModulePanel } from './components/GdprCookieModulePanel';
 import { InfoBannerModulePanel } from './components/InfoBannerModulePanel';
 import { OptimizerModulePanel } from './components/OptimizerModulePanel';
+import { AuditLogModulePanel } from './components/AuditLogModulePanel';
 import { OverviewAndExportPanel } from './components/OverviewAndExportPanel';
 import { AndWrenchLogo } from './components/AndWrenchLogo';
 
-const STORAGE_KEY = 'and_toolkit_wp_state_v040';
+const STORAGE_KEY = 'and_toolkit_wp_state_v050';
 
 export default function App() {
   const [state, setState] = useState<ToolkitState>(() => {
@@ -81,7 +88,7 @@ export default function App() {
 
   const triggerSaveFeedback = (msg = 'Beállítások mentve a WordPress adatbázisba') => {
     setSavedNotice(msg);
-    setTimeout(() => setSavedNotice(null), 2200);
+    setTimeout(() => setSavedNotice(null), 2400);
   };
 
   const toggleTheme = () => {
@@ -140,6 +147,13 @@ export default function App() {
     }));
   };
 
+  const updateAuditLog = (patch: Partial<AuditLogConfig>) => {
+    setState((prev) => ({
+      ...prev,
+      auditLog: { ...prev.auditLog, ...patch },
+    }));
+  };
+
   const updatePerformance = (patch: Partial<PerformanceConfig>) => {
     setState((prev) => ({
       ...prev,
@@ -155,7 +169,8 @@ export default function App() {
       | 'stats'
       | 'gdpr'
       | 'banner'
-      | 'optimizer',
+      | 'optimizer'
+      | 'auditLog',
     enabled: boolean
   ) => {
     setState((prev) => ({
@@ -164,13 +179,55 @@ export default function App() {
     }));
   };
 
+  const handleAppendAuditLogEntry = (entry: AuditLogEntry, sendEmail = false) => {
+    setState((prev) => ({
+      ...prev,
+      auditLog: {
+        ...prev.auditLog,
+        entries: [entry, ...prev.auditLog.entries],
+        emailsSentTotal: prev.auditLog.emailsSentTotal + (sendEmail ? 1 : 0),
+      },
+    }));
+    triggerSaveFeedback(
+      sendEmail
+        ? `Esemény naplózva + E-mail riasztás kiküldve (${state.auditLog.recipientEmail})!`
+        : `Új biztonsági esemény rögzítve a WordPress naplóban: ${entry.actionLabel}`
+    );
+  };
+
+  const handleClearAuditLogs = () => {
+    setState((prev) => ({
+      ...prev,
+      auditLog: {
+        ...prev.auditLog,
+        entries: INITIAL_AUDIT_ENTRIES,
+      },
+    }));
+    triggerSaveFeedback('Biztonsági eseménynapló alapértelmezett állapotba állítva');
+  };
+
+  const handleSendTestDigestEmail = () => {
+    const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    setState((prev) => ({
+      ...prev,
+      auditLog: {
+        ...prev.auditLog,
+        lastDigestSentAt: nowStr,
+        emailsSentTotal: prev.auditLog.emailsSentTotal + 1,
+      },
+    }));
+    triggerSaveFeedback(
+      `24 órás frissítési összefoglaló e-mail elküldve ide: ${state.auditLog.recipientEmail}`
+    );
+  };
+
   const handleRunInteractiveOptimization = () => {
     setState((prev) => {
-      const targetFormat = prev.optimizer.targetFormat;
+      const targetFmt = prev.optimizer.convertFormat;
       const compressionRatio = Math.max(
         0.18,
         (100 - prev.optimizer.compressionQuality) / 100 +
-          (targetFormat === 'avif' ? 0.48 : targetFormat === 'webp' ? 0.38 : 0.15)
+          (targetFmt === 'avif' ? 0.48 : targetFmt === 'webp' ? 0.38 : 0.15)
       );
 
       const updatedQueue = prev.optimizer.mediaQueue.map((item) => {
@@ -181,42 +238,48 @@ export default function App() {
           24,
           Math.round(item.originalSizeKb * (1 - Math.min(0.84, compressionRatio)))
         );
-        const newFormat =
-          targetFormat === 'avif'
+        const newFormat: 'WebP' | 'AVIF' | 'JPG' =
+          targetFmt === 'avif'
             ? 'AVIF'
-            : targetFormat === 'webp'
+            : targetFmt === 'webp'
             ? 'WebP'
-            : item.originalFormat;
-        const resizedDims = prev.optimizer.resizeEnabled
+            : 'JPG';
+        const resizedDims = prev.optimizer.autoResizeEnabled
           ? `${Math.min(prev.optimizer.maxWidthPx, 1920)}×${Math.min(
               prev.optimizer.maxHeightPx,
               1080
             )}`
-          : item.dimensions;
+          : item.originalDimensions;
 
         return {
           ...item,
           optimizedSizeKb: newSize,
-          outputFormat: newFormat,
-          dimensions: resizedDims,
+          targetFormat: newFormat,
+          resizedDimensions: resizedDims,
           status: 'optimized' as const,
         };
       });
 
-      const nowStr = new Date().toISOString().slice(0, 16).replace('T', ' ');
+      const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
       return {
         ...prev,
         optimizer: {
           ...prev.optimizer,
           mediaQueue: updatedQueue,
-          lastBenchmarkAt: nowStr,
-          optimizationRunsCount: prev.optimizer.optimizationRunsCount + 1,
-          measuredTtfbMs: Math.max(24, prev.optimizer.measuredTtfbMs - 6),
-          measuredLcpMs: Math.max(520, prev.optimizer.measuredLcpMs - 70),
-          measuredPageSpeedScore: Math.min(
-            100,
-            prev.optimizer.measuredPageSpeedScore + 1
-          ),
+          lastOptimizedAt: nowStr,
+          totalOptimizationRuns: prev.optimizer.totalOptimizationRuns + 1,
+          speedMetrics: {
+            ...prev.optimizer.speedMetrics,
+            ttfbMs: Math.max(24, prev.optimizer.speedMetrics.ttfbMs - 4),
+            lcpMs: Math.max(520, prev.optimizer.speedMetrics.lcpMs - 45),
+            pageSpeedScore: Math.min(
+              100,
+              prev.optimizer.speedMetrics.pageSpeedScore + 1
+            ),
+            totalSavedMb: Number(
+              (prev.optimizer.speedMetrics.totalSavedMb + 1.8).toFixed(1)
+            ),
+          },
         },
       };
     });
@@ -226,14 +289,13 @@ export default function App() {
   };
 
   const handlePurgeCache = () => {
-    const nowStr = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
     setState((prev) => ({
       ...prev,
       optimizer: {
         ...prev.optimizer,
-        cachedPagesCount: 0,
-        cacheSizeMb: 0,
-        lastCachePurge: nowStr,
+        currentCacheSizeMb: 0,
+        lastCachePurgedAt: nowStr,
       },
     }));
     triggerSaveFeedback('WordPress Gyorsítótár (Page + Object Cache) sikeresen ürítve!');
@@ -241,29 +303,29 @@ export default function App() {
 
   const handleOptimizeSingleImage = (id: string) => {
     setState((prev) => {
-      const targetFormat = prev.optimizer.targetFormat;
+      const targetFmt = prev.optimizer.convertFormat;
       const updatedQueue = prev.optimizer.mediaQueue.map((item) => {
         if (item.id !== id) return item;
-        const newFormat =
-          targetFormat === 'avif'
+        const newFormat: 'WebP' | 'AVIF' | 'JPG' =
+          targetFmt === 'avif'
             ? 'AVIF'
-            : targetFormat === 'webp'
+            : targetFmt === 'webp'
             ? 'WebP'
-            : item.originalFormat;
+            : 'JPG';
         const factor =
-          targetFormat === 'avif' ? 0.24 : targetFormat === 'webp' ? 0.32 : 0.65;
+          targetFmt === 'avif' ? 0.24 : targetFmt === 'webp' ? 0.32 : 0.65;
         const newSize = Math.max(22, Math.round(item.originalSizeKb * factor));
-        const resizedDims = prev.optimizer.resizeEnabled
+        const resizedDims = prev.optimizer.autoResizeEnabled
           ? `${Math.min(prev.optimizer.maxWidthPx, 1920)}×${Math.min(
               prev.optimizer.maxHeightPx,
               1080
             )}`
-          : item.dimensions;
+          : item.originalDimensions;
         return {
           ...item,
           optimizedSizeKb: newSize,
-          outputFormat: newFormat,
-          dimensions: resizedDims,
+          targetFormat: newFormat,
+          resizedDimensions: resizedDims,
           status: 'optimized' as const,
         };
       });
@@ -278,19 +340,36 @@ export default function App() {
     triggerSaveFeedback('Kép egyedileg tömörítve, átméretezve és konvertálva!');
   };
 
-  const handleAddSampleImage = (item: MediaOptimizationItem) => {
-    setState((prev) => ({
-      ...prev,
-      optimizer: {
-        ...prev.optimizer,
-        mediaQueue: [item, ...prev.optimizer.mediaQueue],
-      },
-    }));
-    triggerSaveFeedback(
-      item.status === 'optimized'
-        ? 'Médiafájl feltöltve és automatikusan optimalizálva (valós idejű hook)!'
-        : 'Médiafájl hozzáadva az optimalizálási várólistához!'
-    );
+  const handleAddSampleImage = () => {
+    setState((prev) => {
+      const isAuto =
+        prev.optimizer.autoOptimizeEnabled &&
+        prev.optimizer.autoSchedule === 'realtime-upload';
+      const newItem = {
+        id: `img-${Date.now()}`,
+        fileName: `wp71-uj-termekfoto-${prev.optimizer.mediaQueue.length + 1}.png`,
+        originalFormat: 'PNG' as const,
+        targetFormat:
+          prev.optimizer.convertFormat === 'avif'
+            ? ('AVIF' as const)
+            : ('WebP' as const),
+        originalDimensions: '3200×2000',
+        resizedDimensions: prev.optimizer.autoResizeEnabled
+          ? `${prev.optimizer.maxWidthPx}×${prev.optimizer.maxHeightPx}`
+          : '3200×2000',
+        originalSizeKb: 2240,
+        optimizedSizeKb: isAuto ? 290 : 2240,
+        status: isAuto ? ('optimized' as const) : ('pending' as const),
+      };
+      return {
+        ...prev,
+        optimizer: {
+          ...prev.optimizer,
+          mediaQueue: [newItem, ...prev.optimizer.mediaQueue],
+        },
+      };
+    });
+    triggerSaveFeedback('Új médiafájl hozzáadva a képfeldolgozási listához!');
   };
 
   const handleSimulateBannerClick = () => {
@@ -429,7 +508,7 @@ export default function App() {
 
   const handleResetAll = () => {
     setState(INITIAL_STATE);
-    triggerSaveFeedback('Alapértelmezett And ToolKit v0.4.0 beállítások visszaállítva');
+    triggerSaveFeedback('Alapértelmezett And ToolKit v0.5.0 beállítások visszaállítva');
   };
 
   const activeModulesCount = [
@@ -440,6 +519,7 @@ export default function App() {
     state.gdpr.enabled,
     state.banner.enabled,
     state.optimizer.enabled,
+    state.auditLog.enabled,
   ].filter(Boolean).length;
 
   const perf = calculatePerformanceMetrics(state.performance, activeModulesCount);
@@ -447,7 +527,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       {/* Strict 3-Zone Top Navigation Bar */}
-      <header className="flex items-center justify-between gap-6 px-6 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+      <header className="flex items-center justify-between gap-5 px-6 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
         {/* Zone 1: Brand with custom '& in a wrench' logo */}
         <a
           href="#overview"
@@ -464,7 +544,7 @@ export default function App() {
         {/* Zone 2: Concise single-line text navigation links */}
         <nav
           aria-label="Fő navigáció"
-          className="hidden md:flex items-center gap-4 text-sm font-medium text-slate-600 dark:text-slate-400"
+          className="hidden md:flex items-center gap-3.5 text-sm font-medium text-slate-600 dark:text-slate-400"
         >
           <a
             href="#overview"
@@ -578,6 +658,20 @@ export default function App() {
           >
             Optimalizáló
           </a>
+          <a
+            href="#audit-log"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveTab('audit-log');
+            }}
+            className={`py-1 transition-colors whitespace-nowrap shrink-0 border-b-2 ${
+              activeTab === 'audit-log'
+                ? 'border-blue-600 text-slate-900 dark:text-slate-100 font-semibold'
+                : 'border-transparent hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            Naplózás &amp; E-mail
+          </a>
         </nav>
 
         {/* Zone 3: 1 Primary Action */}
@@ -605,14 +699,14 @@ export default function App() {
               And ToolKit
             </span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono tabular-nums">Verzió: 0.4.0</span>
+            <span className="font-mono tabular-nums">Verzió: 0.5.0</span>
             <span aria-hidden="true">·</span>
             <span>
               Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong>
             </span>
             <span aria-hidden="true">·</span>
             <span className="font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-              {activeModulesCount}/7 modul · Betöltés: {perf.estimatedLoadMs}ms ({perf.bundleSizeKb} KB)
+              {activeModulesCount}/8 modul · Betöltés: {perf.estimatedLoadMs}ms ({perf.bundleSizeKb} KB)
             </span>
           </div>
 
@@ -686,6 +780,7 @@ export default function App() {
             { id: 'gdpr' as const, label: 'GDPR Cookie', icon: ShieldCheck },
             { id: 'banner' as const, label: 'Info Banner', icon: Megaphone },
             { id: 'optimizer' as const, label: 'Optimalizáló', icon: Zap },
+            { id: 'audit-log' as const, label: 'Naplózás & E-mail', icon: Terminal },
             { id: 'export' as const, label: 'PHP Kód', icon: Code2 },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -788,6 +883,16 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'audit-log' && (
+              <AuditLogModulePanel
+                config={state.auditLog}
+                onUpdateConfig={updateAuditLog}
+                onAppendLogEntry={handleAppendAuditLogEntry}
+                onClearLogs={handleClearAuditLogs}
+                onSendTestDigestEmail={handleSendTestDigestEmail}
+              />
+            )}
+
             {activeTab === 'export' && (
               <OverviewAndExportPanel
                 mode="export"
@@ -820,7 +925,7 @@ export default function App() {
       <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4">
         <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
           <span>
-            And ToolKit v0.4.0 · Készítő: galandras12+AI · Auditálva: WordPress 7.1, PHP 8.0+ &amp; EU GDPR
+            And ToolKit v0.5.0 · Készítő: galandras12+AI · Auditálva: WordPress 7.1, PHP 8.0+ &amp; EU GDPR
           </span>
           <div className="flex items-center gap-4">
             <button

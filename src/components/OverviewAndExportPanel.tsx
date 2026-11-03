@@ -12,6 +12,7 @@ import {
   Share2,
   ShieldCheck,
   Sliders,
+  Terminal,
   Zap,
 } from 'lucide-react';
 import {
@@ -32,7 +33,15 @@ interface OverviewAndExportPanelProps {
   state: ToolkitState;
   onNavigateTab: (tab: ActiveTab) => void;
   onToggleModule: (
-    module: 'calendar' | 'search' | 'social' | 'stats' | 'gdpr' | 'banner' | 'optimizer',
+    module:
+      | 'calendar'
+      | 'search'
+      | 'social'
+      | 'stats'
+      | 'gdpr'
+      | 'banner'
+      | 'optimizer'
+      | 'auditLog',
     enabled: boolean
   ) => void;
   onUpdatePerformance: (patch: Partial<PerformanceConfig>) => void;
@@ -55,6 +64,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
     state.gdpr.enabled,
     state.banner.enabled,
     state.optimizer.enabled,
+    state.auditLog.enabled,
   ].filter(Boolean).length;
 
   const perfMetrics = calculatePerformanceMetrics(state.performance, activeCount);
@@ -89,10 +99,10 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             <AndWrenchLogo size="lg" />
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                And ToolKit v0.4.0 — WordPress 7.1 &amp; PHP 8.0+ Forráskód (and-toolkit.php)
+                And ToolKit v0.5.0 — WordPress 7.1 &amp; PHP 8.0+ Forráskód (and-toolkit.php)
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong> · Verzió: <span className="font-mono">0.4.0</span> · Célkörnyezet: <span className="font-mono">WordPress 7.1 / PHP 8.0+ / GDPR / Info Banner &amp; Optimalizáló</span>
+                Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong> · Verzió: <span className="font-mono">0.5.0</span> · Célkörnyezet: <span className="font-mono">WordPress 7.1 / PHP 8.0+ / GDPR / Optimalizáló &amp; Biztonsági Naplózás</span>
               </p>
             </div>
           </div>
@@ -132,7 +142,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                WordPress 7.1, PHP 8.0, EU GDPR, Info Banner &amp; Optimalizáló Audit Jelentés (v0.4.0)
+                WordPress 7.1, PHP 8.0, EU GDPR, Optimalizáló &amp; Biztonsági Audit Napló Jelentés (v0.5.0)
               </h3>
             </div>
             <span className="text-xs font-mono font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
@@ -281,6 +291,20 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                     Filter: upload_size_limit, big_image_size_threshold
                   </td>
                 </tr>
+                <tr>
+                  <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-slate-100">
+                    08. Biztonsági Audit Naplózás &amp; E-mail Értesítő (ÚJ · v0.5.0)
+                  </td>
+                  <td className="py-2.5 px-3 font-mono text-blue-600 dark:text-blue-400">
+                    [wtk_security_badge]
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
+                    .{state.auditLog.defaultExportFormat.toUpperCase()} Export · Napi összefoglaló: {state.auditLog.dailyDigestTime}
+                  </td>
+                  <td className="py-2.5 px-4 font-mono text-slate-500">
+                    Hook: wp_login, upgrader_process_complete, user_register
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -296,14 +320,14 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                GitHub Közzététel Előkészítve (v0.4.0 Release)
+                GitHub Közzététel Előkészítve (v0.5.0 Release)
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                A gyökérkönyvtárban az önálló <code className="font-mono">/and-toolkit.php</code> és a látványos <code className="font-mono">/README.md</code> frissítve a <code className="font-mono">0.4.0</code> Kép-, Upload Limit-, Lazy Load &amp; Cache Optimalizáló modullal.
+                A gyökérkönyvtárban az önálló <code className="font-mono">/and-toolkit.php</code> és a látványos <code className="font-mono">/README.md</code> frissítve a <code className="font-mono">0.5.0</code> Biztonsági Audit Naplózás (.log/.txt/.csv) és E-mail Értesítő modullal.
               </p>
             </div>
             <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-              Git: main · tag: v0.4.0
+              Git: main · tag: v0.5.0
             </span>
           </div>
           <div className="p-3 rounded-md bg-slate-950 text-slate-200 text-xs font-mono overflow-x-auto space-y-1">
@@ -319,7 +343,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
   // OVERVIEW MODE
   return (
     <div className="space-y-6">
-      {/* Overview Header with Custom Wrench-& Logo, Version 0.4.0 & Author galandras12+AI */}
+      {/* Overview Header with Custom Wrench-& Logo, Version 0.5.0 & Author galandras12+AI */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-start sm:items-center gap-3.5">
           <AndWrenchLogo size="lg" />
@@ -329,14 +353,14 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
             </h2>
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-                Verzió: 0.4.0
+                Verzió: 0.5.0
               </span>
               <span aria-hidden="true">·</span>
               <span>
                 Készítő: <strong className="text-slate-800 dark:text-slate-200">galandras12+AI</strong>
               </span>
               <span aria-hidden="true">·</span>
-              <span>WordPress 7.1 Admin, GDPR, Info Banner &amp; Optimalizáló</span>
+              <span>WordPress 7.1 Admin, GDPR, Info Banner, Optimalizáló &amp; Audit Napló</span>
             </div>
           </div>
         </div>
@@ -607,8 +631,8 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           </div>
         </div>
 
-        {/* Module 7: Dedicated Media, Upload Limit, Lazy Load & Speed Optimizer (New in v0.4.0) */}
-        <div className="md:col-span-2 p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
+        {/* Module 7: Dedicated Media, Upload Limit, Lazy Load & Speed Optimizer (v0.4.0) */}
+        <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -617,10 +641,10 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    07. Kép-, Upload Limit-, Lazy Load és Gyorsítótár Optimalizáló (ÚJ · v0.4.0)
+                    07. Kép-, Upload Limit-, Lazy Load &amp; Cache Optimalizáló (v0.4.0)
                   </h3>
                   <div className="text-xs text-slate-500 font-mono">
-                    {state.optimizer.convertFormat.toUpperCase()} ({state.optimizer.compressionQuality}%) · Max {state.optimizer.maxWidthPx}×{state.optimizer.maxHeightPx}px · WP Upload Limit: {state.optimizer.customUploadLimitMb} MB · TTFB: {state.optimizer.speedMetrics.ttfbMs}ms
+                    {state.optimizer.convertFormat.toUpperCase()} ({state.optimizer.compressionQuality}%) · WP Limit: {state.optimizer.customUploadLimitMb} MB · TTFB: {state.optimizer.speedMetrics.ttfbMs}ms
                   </div>
                 </div>
               </div>
@@ -633,20 +657,60 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
               />
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Dedikált optimalizáló központ: opcionális képtömörítés, WebP/AVIF konvertálás és átméretezés, a WordPress alapértelmezett fájlfeltöltési korlátjának felülbírálása ({state.optimizer.defaultWpUploadLimitMb} MB → {state.optimizer.customUploadLimitMb} MB), teljes körű Lazy Loading (képek, iframe, háttérképek) és kézi vagy automatikus gyorsítótár-/sebességoptimalizálás.
+              Opcionális képtömörítés, WebP/AVIF konvertálás és átméretezés, a WordPress alapértelmezett fájlfeltöltési korlátjának felülbírálása ({state.optimizer.defaultWpUploadLimitMb} MB → {state.optimizer.customUploadLimitMb} MB) és teljes körű Lazy Loading.
             </p>
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span className="text-[11px] font-mono text-slate-400">
-              [wtk_speed_badge] · upload_size_limit · big_image_size_threshold
-            </span>
+            <span className="text-[11px] font-mono text-slate-400">[wtk_speed_badge]</span>
             <button
               type="button"
               onClick={() => onNavigateTab('optimizer')}
               className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
             >
               <Sliders className="w-3.5 h-3.5" />
-              <span>Optimalizáló és Sebességmérő megnyitása</span>
+              <span>Optimalizáló megnyitása</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Module 8: Security Audit Logging & Email Notification Center (New in v0.5.0) */}
+        <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-md bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <Terminal className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    08. Biztonsági Naplózás &amp; E-mail Értesítés (ÚJ · v0.5.0)
+                  </h3>
+                  <div className="text-xs text-slate-500 font-mono">
+                    {state.auditLog.entries.length} esemény · .{state.auditLog.defaultExportFormat.toUpperCase()} export · Napi összefoglaló: {state.auditLog.dailyDigestTime}
+                  </div>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                aria-label="Naplózás és E-mail modul engedélyezése"
+                checked={state.auditLog.enabled}
+                onChange={(e) => onToggleModule('auditLog', e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer"
+              />
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Naplózza a bejelentkezéseket (új hely/eszköz riasztással), a plugin/téma/poszt/oldal/felhasználó műveleteket, az automatikus és WP mag frissítéseket (.log/.txt/.csv mentéssel és verziókövető e-mail értesítőkkel).
+            </p>
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span className="text-[11px] font-mono text-slate-400">[wtk_security_badge]</span>
+            <button
+              type="button"
+              onClick={() => onNavigateTab('audit-log')}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Naplózás &amp; E-mail szabályok</span>
             </button>
           </div>
         </div>
@@ -753,7 +817,7 @@ export const OverviewAndExportPanel: React.FC<OverviewAndExportPanelProps> = ({
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              WordPress 7.1, PHP 8.0+, EU GDPR, Info Banner &amp; Optimalizáló Audit (v0.4.0)
+              WordPress 7.1, PHP 8.0+, EU GDPR, Optimalizáló &amp; Biztonsági Napló Audit (v0.5.0)
             </h3>
           </div>
           <div className="flex items-center gap-3 text-xs">

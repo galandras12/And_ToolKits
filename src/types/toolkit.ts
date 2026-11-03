@@ -9,6 +9,7 @@ export type ActiveTab =
   | 'gdpr'
   | 'banner'
   | 'optimizer'
+  | 'audit-log'
   | 'export';
 
 export type CalendarWidgetStyle = 'compact' | 'cards' | 'grid' | 'timeline';
@@ -260,6 +261,102 @@ export interface OptimizerConfig {
   };
 }
 
+// ============================================================================
+// v0.5.0: 08. Biztonsági Naplózás & E-mail Értesítés Modul (Audit Log & Email)
+// ============================================================================
+
+export type AuditEventCategory =
+  | 'user_login'
+  | 'plugin_lifecycle'
+  | 'theme_lifecycle'
+  | 'post_lifecycle'
+  | 'page_lifecycle'
+  | 'user_lifecycle'
+  | 'auto_system_update'
+  | 'core_manual_update';
+
+export type WpUserRole =
+  | 'administrator'
+  | 'editor'
+  | 'author'
+  | 'contributor'
+  | 'subscriber';
+
+export type UserCreationMethod =
+  | 'registration-form'
+  | 'user-invitation'
+  | 'admin-created'
+  | 'role-changed'
+  | 'user-deleted';
+
+export type LoginNotificationScope = 'all-users' | 'editors-only' | 'admins-only';
+
+export type AuditLogExportFormat = 'log' | 'txt' | 'csv';
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string; // YYYY-MM-DD HH:mm:ss
+  category: AuditEventCategory;
+  actionLabel: string; // e.g. 'Bejelentkezés', 'Plugin frissítés', 'Felhasználó létrehozás (Meghívóval)'
+  actorUser: string; // e.g. 'galandras12', 'szabo.dora', 'WP-Cron Automatikus Rendszer'
+  actorRole: WpUserRole | 'system';
+  targetObject: string; // e.g. 'WooCommerce', 'Astra Pro Téma', 'Kapcsolat oldal', 'WP Core 7.1.0'
+  details: string; // Detailed description including versions, role changes, or creation method
+  previousVersion?: string;
+  newVersion?: string;
+  userCreationMethod?: UserCreationMethod;
+  ipLocation?: string;
+  deviceBrowser?: string;
+  isNewDeviceOrLocation?: boolean;
+  severity: 'info' | 'warning' | 'critical';
+}
+
+export interface PendingUpdateItem {
+  id: string;
+  componentType: 'plugin' | 'theme' | 'core';
+  name: string;
+  currentVersion: string;
+  newVersion: string;
+  detectedAt: string;
+  autoUpdatedInLast24h: boolean;
+}
+
+export interface AuditLogConfig {
+  enabled: boolean;
+  showSidebarAuditWidget: boolean;
+  recipientEmail: string;
+  // Granular logging switches for all 8 required audit categories
+  logUserLogins: boolean;
+  logPluginChanges: boolean;
+  logThemeChanges: boolean;
+  logPostChanges: boolean;
+  logPageChanges: boolean;
+  logUserLifecycle: boolean;
+  logAutoSystemUpdates: boolean;
+  logCoreManualUpdates: boolean;
+  // Export preferences
+  defaultExportFormat: AuditLogExportFormat;
+  retentionDays: number;
+  // 1. Login Email Notifications
+  loginEmailEnabled: boolean;
+  loginEmailScope: LoginNotificationScope;
+  // 2. New Location / New Device Login Alert for optional user groups
+  newDeviceLocationEmailEnabled: boolean;
+  newDeviceTargetRoles: WpUserRole[];
+  // 3. Available Update Email Alert (Plugin / Theme / Core with current -> new version)
+  updateAvailableEmailEnabled: boolean;
+  notifyPluginUpdates: boolean;
+  notifyThemeUpdates: boolean;
+  notifyCoreUpdates: boolean;
+  // 4. Daily Digest Email at custom time for 24h automatic updates
+  dailyDigestEnabled: boolean;
+  dailyDigestTime: string; // HH:mm e.g. '08:00'
+  lastDigestSentAt: string;
+  emailsSentTotal: number;
+  entries: AuditLogEntry[];
+  pendingUpdates: PendingUpdateItem[];
+}
+
 export interface PerformanceConfig {
   minifyAssets: boolean;
   deferScripts: boolean;
@@ -279,8 +376,7 @@ export interface ToolkitState {
   gdpr: GdprConfig;
   banner: BannerConfig;
   optimizer: OptimizerConfig;
+  auditLog: AuditLogConfig;
   performance: PerformanceConfig;
   posts: ScheduledPostItem[];
 }
-
-
